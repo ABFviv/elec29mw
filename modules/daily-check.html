@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Daily Check — PowerCore EMS</title>
+  <meta name="description" content="Shift-based daily routine checks for the 29MW Power Plant electrical team." />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/module.css" />
+  <style>
+    /* ---- Shift Card ---- */
+    .shift-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .shift-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .3s;
+    }
+
+    .shift-card.done {
+      border-color: rgba(0, 230, 118, .35);
+      background: rgba(0, 230, 118, .03);
+    }
+
+    .shift-card.skipped {
+      border-color: rgba(240, 165, 0, .25);
+      background: rgba(240, 165, 0, .02);
+    }
+
+    .shift-card.active {
+      border-color: rgba(0, 212, 255, .35);
+      background: rgba(0, 212, 255, .03);
+      box-shadow: 0 0 20px rgba(0, 212, 255, .07);
+    }
+
+    .check-slot-box {
+      background: var(--bg-card-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-top: 14px;
+      position: relative;
+      transition: all .2s ease;
+    }
+
+    .check-slot-box:hover {
+      border-color: rgba(255, 255, 255, .15);
+    }
+
+    .check-slot-box.done {
+      border-color: rgba(0, 230, 118, .3);
+      background: rgba(0, 230, 118, .03);
+    }
+
+    .check-slot-box.skipped {
+      border-color: rgba(240, 165, 0, .25);
+      background: rgba(240, 165, 0, .02);
+    }
+
+    .check-slot-box.active {
+      border-color: rgba(0, 212, 255, .35);
+      box-shadow: 0 0 16px rgba(0, 212, 255, .06);
+    }
+
+    .check-slot-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .check-slot-badge {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, .06);
+      color: var(--text-secondary);
+    }
+
+    .shift-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+
+    .shift-card.shift1::before {
+      background: linear-gradient(90deg, #00d4ff, #0066ff);
+    }
+
+    .shift-card.shift2::before {
+      background: linear-gradient(90deg, #f0a500, #ff6b00);
+    }
+
+    .shift-card.shift3::before {
+      background: linear-gradient(90deg, #a78bfa, #7c3aed);
+    }
+
+    .shift-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .shift-label {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .shift-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .shift-status-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 100px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .shift-status-badge.done {
+      background: rgba(0, 230, 118, .12);
+      color: #00e676;
+    }
+
+    .shift-status-badge.skipped {
+      background: rgba(240, 165, 0, .12);
+      color: #f0a500;
+    }
+
+    .shift-status-badge.active {
+      background: rgba(0, 212, 255, .12);
+      color: #00d4ff;
+      animation: pulseText 2s ease-in-out infinite;
+    }
+
+    .shift-status-badge.upcoming {
+      background: rgba(100, 116, 139, .1);
+      color: #64748b;
+    }
+
+    @keyframes pulseText {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .6
+      }
+    }
+
+    .task-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .task-name {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
+    .cat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 100px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 14px;
+    }
+
+    .special-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 100px;
+      background: rgba(244, 63, 94, .1);
+      color: #fb7185;
+      margin-left: 6px;
+    }
+
+    .done-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 14px;
+      line-height: 1.6;
+    }
+
+    .done-meta strong {
+      color: var(--text-primary);
+    }
+
+    .shift-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-done {
+      flex: 1;
+      padding: 10px;
+      background: rgba(0, 230, 118, .12);
+      border: 1px solid rgba(0, 230, 118, .25);
+      color: #00e676;
+      border-radius: var(--radius-sm);
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .3s;
+    }
+
+    .btn-done:hover {
+      background: rgba(0, 230, 118, .2);
+    }
+
+    .btn-skip {
+      padding: 10px 14px;
+      background: rgba(240, 165, 0, .08);
+      border: 1px solid rgba(240, 165, 0, .2);
+      color: #f0a500;
+      border-radius: var(--radius-sm);
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .3s;
+    }
+
+    .btn-skip:hover {
+      background: rgba(240, 165, 0, .15);
+    }
+
+    .btn-undo {
+      padding: 10px 14px;
+      background: rgba(100, 116, 139, .1);
+      border: 1px solid rgba(100, 116, 139, .2);
+      color: #64748b;
+      border-radius: var(--radius-sm);
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .3s;
+    }
+
+    .btn-undo:hover {
+      background: rgba(100, 116, 139, .2);
+      color: var(--text-primary);
+    }
+
+    /* ---- Month Calendar ---- */
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .cal-nav-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .3s;
+    }
+
+    .cal-nav-btn:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .cal-month-title {
+      font-size: 18px;
+      font-weight: 800;
+      flex: 1;
+    }
+
+    .cal-legend {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .cal-leg-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .cal-leg-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .cal-header {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      padding: 6px 0;
+    }
+
+    .cal-day {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 6px;
+      min-height: 88px;
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+    }
+
+    .cal-day:hover {
+      border-color: rgba(0, 212, 255, .3);
+      background: rgba(0, 212, 255, .03);
+    }
+
+    .cal-day.today {
+      border-color: rgba(0, 212, 255, .4);
+      background: rgba(0, 212, 255, .05);
+    }
+
+    .cal-day.cal-empty {
+      background: transparent;
+      border-color: transparent;
+      cursor: default;
+      min-height: 0;
+    }
+
+    .cal-day-num {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .cal-day.today .cal-day-num {
+      color: var(--cyan);
+    }
+
+    .cal-task-pill {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 4px;
+      margin-bottom: 3px;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cal-done-dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      display: flex;
+      gap: 2px;
+    }
+
+    .cal-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+    }
+
+    /* ---- Priority Panel ---- */
+    .priority-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .priority-item {
+      background: var(--bg-card-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    .priority-item label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .priority-item input[type=range] {
+      width: 100%;
+      accent-color: var(--cyan);
+      cursor: pointer;
+    }
+
+    .priority-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan);
+      float: right;
+    }
+
+    /* ---- Coverage table ---- */
+    .coverage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px;
+    }
+
+    .coverage-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .coverage-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 32px;
+      color: var(--text-muted);
+    }
+
+    .coverage-name {
+      font-size: 12px;
+      font-weight: 600;
+      flex: 1;
+      line-height: 1.3;
+    }
+
+    .coverage-count {
+      font-size: 18px;
+      font-weight: 800;
+      min-width: 28px;
+      text-align: right;
+    }
+
+    .coverage-bar-wrap {
+      height: 4px;
+      background: rgba(255, 255, 255, .05);
+      border-radius: 2px;
+      margin-top: 4px;
+    }
+
+    .coverage-bar {
+      height: 4px;
+      border-radius: 2px;
+      transition: width .6s;
+    }
+
+    /* ---- No schedule state ---- */
+    .no-schedule {
+      text-align: center;
+      padding: 60px 40px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+
+    .no-schedule-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .no-schedule h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .no-schedule p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 24px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    @media(max-width:900px) {
+      .shift-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media(max-width:768px) {
+      .cal-grid {
+        grid-template-columns: repeat(7, 1fr);
+        font-size: 11px;
+      }
+
+      .cal-day {
+        min-height: 60px;
+      }
+    }
+  </style>
+</head>
+
+<body class="dash-body">
+  <header class="topbar" id="topbar"></header>
+
+  <main class="dash-main">
+    <!-- Module Header -->
+    <div class="mod-header">
+      <div class="mod-title-row">
+        <div class="mod-icon-wrap"
+          style="background:linear-gradient(135deg,rgba(0,212,255,.15),rgba(0,102,255,.1));border-color:rgba(0,212,255,.25);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.7"
+            stroke-linecap="round">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+        </div>
+        <div class="mod-title">
+          <h1>Daily Check</h1>
+          <p>3-shift routine check schedule — 2 checks per shift (6 checks / 24h) across all 25 master tasks</p>
+        </div>
+      </div>
+      <div class="mod-actions">
+        <button class="btn-secondary" onclick="openAdminPanel()" id="adminBtn" style="display:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+          </svg>
+          Schedule Settings
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="mod-stats-row" id="statsRow"></div>
+
+    <!-- Tab Nav -->
+    <div class="tab-nav">
+      <button class="tab-btn active" id="tab-today" onclick="switchTab('today')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        Today's Shifts
+      </button>
+      <button class="tab-btn" id="tab-month" onclick="switchTab('month')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+        Monthly Schedule
+      </button>
+      <button class="tab-btn" id="tab-coverage" onclick="switchTab('coverage')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+        Task Coverage
+      </button>
+    </div>
+
+    <!-- TODAY'S SHIFTS TAB -->
+    <div class="tab-panel active" id="panel-today">
+      <div id="todayContent"></div>
+    </div>
+
+    <!-- MONTHLY CALENDAR TAB -->
+    <div class="tab-panel" id="panel-month">
+      <div class="cal-nav">
+        <button class="cal-nav-btn" onclick="changeCalMonth(-1)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <div class="cal-month-title" id="calMonthTitle">Loading…</div>
+        <button class="cal-nav-btn" onclick="changeCalMonth(1)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      </div>
+      <div class="cal-legend">
+        <div class="cal-leg-item">
+          <div class="cal-leg-dot" style="background:#00e676;"></div> Done
+        </div>
+        <div class="cal-leg-item">
+          <div class="cal-leg-dot" style="background:#f0a500;"></div> Skipped
+        </div>
+        <div class="cal-leg-item">
+          <div class="cal-leg-dot" style="background:#334155;"></div> Pending
+        </div>
+        <div class="cal-leg-item">
+          <div class="cal-leg-dot" style="background:#00d4ff;"></div> Today
+        </div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <!-- COVERAGE TAB -->
+    <div class="tab-panel" id="panel-coverage">
+      <div id="coverageContent"></div>
+    </div>
+  </main>
+
+  <!-- MARK DONE / SKIP MODAL -->
+  <div class="modal-overlay" id="markModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="markModalTitle">Mark Shift Complete</h2>
+        <button class="modal-close" onclick="closeModal('markModal')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="mark_date" />
+        <input type="hidden" id="mark_shift" />
+        <input type="hidden" id="mark_action" /> <!-- 'done' or 'skipped' -->
+
+        <div
+          style="background:var(--bg-card-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:20px;">
+          <div id="markTaskPreview" style="font-size:14px;font-weight:600;line-height:1.5;"></div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field full">
+            <label>Completed / Checked By *</label>
+            <select id="mark_employee">
+              <option value="">Select engineer…</option>
+            </select>
+          </div>
+          <div class="form-field full" id="notesField">
+            <label>Notes / Remarks (optional)</label>
+            <textarea id="mark_notes" rows="2" placeholder="Any observations, issues found, or remarks…"></textarea>
+          </div>
+          <div class="form-field full" id="skipReasonField" style="display:none;">
+            <label>Reason for Skipping *</label>
+            <textarea id="mark_skip_reason" rows="2" placeholder="Explain why this task was skipped…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('markModal')">Cancel</button>
+        <button class="btn-primary" id="markSubmitBtn" onclick="submitMark()">Confirm Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN / SCHEDULE SETTINGS MODAL -->
+  <div class="modal-overlay" id="adminModal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h2>Schedule Settings</h2>
+        <button class="modal-close" onclick="closeModal('adminModal')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div
+          style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.15);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:20px;font-size:13px;line-height:1.6;color:var(--text-secondary);">
+          <strong style="color:var(--text-primary);">How the scheduler works:</strong>
+          Each month, 180–186 task slots (30–31 days × 6 checks across 3 shifts) are distributed proportionally across all 25 tasks.
+          Tasks with higher priority weights appear more frequently. Every task appears <em>at least once</em> per
+          month.
+        </div>
+
+        <div
+          style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted);margin-bottom:12px;">
+          Priority Weights (higher = more frequent)</div>
+        <div class="priority-grid">
+          <div class="priority-item">
+            <label style="color:#ff4757;">⚡ Critical Priority <span class="priority-val" id="wCritical">6</span></label>
+            <input type="range" id="sCritical" min="2" max="15" value="6" oninput="updateWeight('Critical')" />
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">S19 Switchgear, S20 DCS System</div>
+          </div>
+          <div class="priority-item">
+            <label style="color:#f0a500;">🔶 High Priority <span class="priority-val" id="wHigh">4</span></label>
+            <input type="range" id="sHigh" min="1" max="12" value="4" oninput="updateWeight('High')" />
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">DAS systems (S1–S6), DE sensors
+              (S15–S18)</div>
+          </div>
+          <div class="priority-item">
+            <label style="color:#38bdf8;">🔷 Medium Priority <span class="priority-val" id="wMedium">3</span></label>
+            <input type="range" id="sMedium" min="1" max="10" value="3" oninput="updateWeight('Medium')" />
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">FTS, RCS, Air Comp, Controls, Motors
+            </div>
+          </div>
+          <div class="priority-item">
+            <label style="color:#64748b;">🔹 Low Priority <span class="priority-val" id="wLow">2</span></label>
+            <input type="range" id="sLow" min="1" max="8" value="2" oninput="updateWeight('Low')" />
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Cleaning tasks (S10, S11, S22, S23)
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+          <div
+            style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted);margin-bottom:10px;">
+            Generate Schedule For</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+            <select id="genYear" class="filter-select" style="flex:0 0 110px;"></select>
+            <select id="genMonth" class="filter-select" style="flex:0 0 140px;"></select>
+            <div id="freqPreview" style="font-size:12px;color:var(--text-secondary);flex:1;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="gap:10px;">
+        <button class="btn-secondary" onclick="closeModal('adminModal')">Cancel</button>
+        <button class="btn-secondary" onclick="previewFrequencies()">Preview Frequencies</button>
+        <button class="btn-primary" onclick="generateAndSave()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round">
+            <polyline points="23 4 23 10 17 10" />
+            <path d="M20.49 15a9 9 0 1 1-.18-6.24" />
+          </svg>
+          Generate Schedule
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY DETAIL MODAL (click a calendar day) -->
+  <div class="modal-overlay" id="dayModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="dayModalTitle">Day Detail</h2>
+        <button class="modal-close" onclick="closeModal('dayModal')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="dayModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('dayModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/scheduler.js"></script>
+  <script src="../js/shell.js"></script>
+  <script>
+    // ================================================================
+    //  State
+    // ================================================================
+    let currentUser = null;
+    let viewYear = new Date().getFullYear();
+    let viewMonth = new Date().getMonth() + 1; // 1-indexed
+    let calViewYear = viewYear;
+    let calViewMonth = viewMonth;
+    let currentSchedule = null;
+
+    const SHIFT_COLORS = ['#00d4ff', '#f0a500', '#a78bfa'];
+    const SHIFT_LABELS = ['Shift 1  07:30 – 15:30', 'Shift 2  15:30 – 23:30', 'Shift 3  23:30 – 07:30'];
+    const SHIFT_SHORT = ['07:30–15:30', '15:30–23:30', '23:30–07:30'];
+    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+
+    // ================================================================
+    //  Boot
+    // ================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+      const session = DB.Session.require();
+      if (!session) return;
+      currentUser = session.user;
+      renderTopbar('Daily Check');
+
+      // Show admin button for admin and supervisor
+      if (['System Administrator', 'Electrical Supervisor'].includes(currentUser.role)) {
+        document.getElementById('adminBtn').style.display = '';
+      }
+
+      loadOrPrompt();
+      populateGenDropdowns();
+    });
+
+    // ================================================================
+    //  Load / Prompt
+    // ================================================================
+    function loadOrPrompt() {
+      currentSchedule = DB.MonthlySchedule.load(viewYear, viewMonth);
+      renderStatsRow();
+      renderToday();
+      renderCalendar();
+      renderCoverage();
+    }
+
+    // ================================================================
+    //  STATS ROW
+    // ================================================================
+    function renderStatsRow() {
+      const stats = DB.MonthlySchedule.getStats(viewYear, viewMonth);
+      const el = document.getElementById('statsRow');
+      if (!stats.exists) {
+        el.innerHTML = `
+      <div class="stat-mini"><div class="stat-mini-val" style="color:var(--text-muted);">—</div><div class="stat-mini-lbl">Schedule Status</div></div>`;
+        return;
+      }
+      const pct = Math.round((stats.done / stats.total) * 100);
+      el.innerHTML = `
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#00e676;">${stats.done}</div><div class="stat-mini-lbl">Completed Checks</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#f0a500;">${stats.skipped}</div><div class="stat-mini-lbl">Skipped</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#38bdf8;">${stats.pending}</div><div class="stat-mini-lbl">Pending</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:var(--text-primary);">${pct}%</div><div class="stat-mini-lbl">Monthly Progress</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#00d4ff;">${stats.todayDone}/6</div><div class="stat-mini-lbl">Today Done</div></div>`;
+    }
+
+    // ================================================================
+    //  TAB SWITCH
+    // ================================================================
+    function switchTab(tab) {
+      ['today', 'month', 'coverage'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+        document.getElementById(`panel-${t}`).classList.toggle('active', t === tab);
+      });
+      if (tab === 'month') renderCalendar();
+      if (tab === 'coverage') renderCoverage();
+    }
+
+    // ================================================================
+    //  TODAY'S SHIFTS (2 checks per shift = 6 checks / 24h)
+    // ================================================================
+    function renderToday() {
+      const el = document.getElementById('todayContent');
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      if (!currentSchedule) {
+        el.innerHTML = buildNoScheduleCard(viewYear, viewMonth);
+        return;
+      }
+
+      const day = currentSchedule.days.find(d => d.date === todayStr);
+
+      if (!day) {
+        el.innerHTML = `<div class="no-schedule">
+      <div class="no-schedule-icon">📅</div>
+      <h3>No entry for today</h3>
+      <p>The current date (${todayStr}) is outside the loaded schedule.
+         Try navigating to the correct month or regenerating the schedule.</p>
+    </div>`;
+        return;
+      }
+
+      const now = new Date();
+      const h = now.getHours() + now.getMinutes() / 60;
+      // Current shift based on time: Shift 1 (07:30–15:30), Shift 2 (15:30–23:30), Shift 3 (23:30–07:30)
+      const activeShift = h >= 7.5 && h < 15.5 ? 1 : h >= 15.5 && h < 23.5 ? 2 : 3;
+
+      const dateLabel = new Date(todayStr + 'T12:00:00').toLocaleDateString('en-GB',
+        { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+      let html = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;font-weight:500;">
+    📅 ${dateLabel} &nbsp;·&nbsp; <strong>6 Daily Checks</strong> (2 per shift)
+  </div>
+  <div class="shift-grid">`;
+
+      [1, 2, 3].forEach(s => {
+        const slots = [`${s}a`, `${s}b`];
+        const isShiftActive = s === activeShift;
+        const checksDone = slots.filter(k => (day[`status${k}`] ?? day[`status${s}`]) === 'done').length;
+        const allDone = checksDone === 2;
+
+        let shiftStatusBadge = '';
+        if (allDone) {
+          shiftStatusBadge = `<span class="shift-status-badge done">✓ 2/2 Complete</span>`;
+        } else if (checksDone === 1) {
+          shiftStatusBadge = `<span class="shift-status-badge skipped">1/2 Done</span>`;
+        } else if (isShiftActive) {
+          shiftStatusBadge = `<span class="shift-status-badge active">● Active Shift</span>`;
+        } else {
+          shiftStatusBadge = `<span class="shift-status-badge upcoming">Upcoming</span>`;
+        }
+
+        html += `<div class="shift-card shift${s} ${allDone ? 'done' : isShiftActive ? 'active' : ''}">
+      <div class="shift-header">
+        <div>
+          <span class="shift-label" style="color:${SHIFT_COLORS[s - 1]};">Shift ${s}</span>
+          <span class="shift-time"> · ${SHIFT_SHORT[s - 1]}</span>
+        </div>
+        ${shiftStatusBadge}
+      </div>`;
+
+        slots.forEach((slotKey, idx) => {
+          const checkLabel = `Check ${idx + 1}`;
+          const taskId = day[`shift${slotKey}`] || (idx === 0 ? day[`shift${s}`] : null);
+          const status = day[`status${slotKey}`] || (idx === 0 ? (day[`status${s}`] || 'pending') : 'pending');
+          const doneBy = day[`doneBy${slotKey}`] || (idx === 0 ? day[`doneBy${s}`] : null);
+          const doneAt = day[`doneAt${slotKey}`] || (idx === 0 ? day[`doneAt${s}`] : null);
+          const notes = day[`notes${slotKey}`] || (idx === 0 ? day[`notes${s}`] : '');
+
+          const task = Scheduler.getTask(taskId);
+          const colors = Scheduler.getTaskColor(taskId);
+          const isSlotActive = isShiftActive && status === 'pending';
+
+          let statusClass = status;
+          if (isSlotActive) statusClass = 'active';
+          if (status === 'pending' && !isSlotActive) statusClass = 'upcoming';
+
+          html += `
+          <div class="check-slot-box ${statusClass}">
+            <div class="check-slot-header">
+              <span class="check-slot-badge" style="color:${SHIFT_COLORS[s - 1]};border-left:2px solid ${SHIFT_COLORS[s - 1]};">${checkLabel}</span>
+              <span class="shift-status-badge ${statusClass}">
+                ${status === 'done' ? '✓ Done' : status === 'skipped' ? '⚠ Skipped' : isSlotActive ? '● Active' : 'Pending'}
+              </span>
+            </div>
+
+            ${task ? `
+              <div class="task-code">${task.code}</div>
+              <div class="task-name">${esc(task.name)}</div>
+              <div style="margin-bottom:10px;">
+                <span class="cat-badge" style="background:${colors.bg};color:${colors.color};margin-bottom:0;">
+                  ${esc(task.category)}
+                </span>
+                ${task.special ? '<span class="special-badge">📋 Special Sheet</span>' : ''}
+              </div>
+            ` : `<div class="task-name" style="color:var(--text-muted);">No task assigned</div>`}
+
+            ${status === 'done' ? `
+              <div class="done-meta">
+                <strong>${esc(doneBy || '—')}</strong> completed<br/>
+                ${doneAt ? `at ${new Date(doneAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                ${notes ? `<br/><em style="color:var(--text-muted);font-size:11px;">${esc(notes)}</em>` : ''}
+              </div>
+              <div class="shift-actions">
+                <button class="btn-undo" onclick="undoShift('${todayStr}','${slotKey}')">↩ Undo</button>
+              </div>
+            ` : status === 'skipped' ? `
+              <div class="done-meta">
+                <strong>Skipped</strong> by ${esc(doneBy || '—')}
+                ${notes ? `<br/><em style="font-size:11px;color:var(--text-muted);">${esc(notes)}</em>` : ''}
+              </div>
+              <div class="shift-actions">
+                <button class="btn-done" onclick="openMarkModal('${todayStr}','${slotKey}','done')">Mark Done</button>
+                <button class="btn-undo" onclick="undoShift('${todayStr}','${slotKey}')">↩ Undo</button>
+              </div>
+            ` : `
+              <div class="shift-actions">
+                <button class="btn-done" onclick="openMarkModal('${todayStr}','${slotKey}','done')">✓ Mark Complete</button>
+                <button class="btn-skip" onclick="openMarkModal('${todayStr}','${slotKey}','skipped')">Skip</button>
+              </div>
+            `}
+          </div>`;
+        });
+
+        html += `</div>`;
+      });
+
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    // ================================================================
+    //  MARK / UNDO (supports slotKey: '1a','1b','2a','2b','3a','3b')
+    // ================================================================
+    function openMarkModal(dateStr, slotKey, action) {
+      slotKey = String(slotKey);
+      const day = currentSchedule?.days.find(d => d.date === dateStr);
+      if (!day) return;
+      const sNum = Number(slotKey[0]) || 1;
+      const checkNum = slotKey.endsWith('b') ? 2 : 1;
+      const taskId = day[`shift${slotKey}`] || day[`shift${sNum}`];
+      const task = Scheduler.getTask(taskId);
+
+      document.getElementById('mark_date').value = dateStr;
+      document.getElementById('mark_shift').value = slotKey;
+      document.getElementById('mark_action').value = action;
+      document.getElementById('mark_notes').value = '';
+      document.getElementById('mark_skip_reason').value = '';
+
+      document.getElementById('markModalTitle').textContent =
+        action === 'done' ? `Mark Shift ${sNum} — Check ${checkNum} Complete` : `Skip Shift ${sNum} — Check ${checkNum} Task`;
+      document.getElementById('markSubmitBtn').textContent =
+        action === 'done' ? 'Confirm Done' : 'Confirm Skip';
+      document.getElementById('markSubmitBtn').style.background =
+        action === 'done' ? '' : 'rgba(240,165,0,0.8)';
+
+      document.getElementById('notesField').style.display = action === 'done' ? '' : 'none';
+      document.getElementById('skipReasonField').style.display = action === 'skipped' ? '' : 'none';
+
+      document.getElementById('markTaskPreview').innerHTML = task
+        ? `<div style="font-size:11px;font-weight:700;color:${SHIFT_COLORS[sNum - 1]};text-transform:uppercase;margin-bottom:4px;">
+            Shift ${sNum} · Check ${checkNum} (${SHIFT_SHORT[sNum - 1]})
+           </div>
+           <span style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">${task.code}</span><br/>
+           <strong>${esc(task.name)}</strong>`
+        : 'Unknown task';
+
+      // Populate employees
+      const users = DB.Users.getActive().filter(u => u.role !== 'System Administrator');
+      const sel = document.getElementById('mark_employee');
+      sel.innerHTML = '<option value="">Select engineer…</option>' +
+        users.map(u => `<option value="${u.name}">${u.name} — ${u.role}</option>`).join('');
+      // Pre-select if current user is an engineer
+      if (users.find(u => u.name === currentUser.name)) {
+        sel.value = currentUser.name;
+      }
+
+      openModal('markModal');
+    }
+
+    function submitMark() {
+      const dateStr = document.getElementById('mark_date').value;
+      const slotKey = document.getElementById('mark_shift').value;
+      const action = document.getElementById('mark_action').value;
+      const employee = document.getElementById('mark_employee').value;
+      const notes = action === 'done'
+        ? document.getElementById('mark_notes').value.trim()
+        : document.getElementById('mark_skip_reason').value.trim();
+
+      if (!employee) { showToast('Please select an engineer', 'error'); return; }
+      if (action === 'skipped' && !notes) { showToast('Please give a reason for skipping', 'error'); return; }
+
+      DB.MonthlySchedule.markShift(dateStr, slotKey, action, employee, notes);
+
+      // Reload
+      currentSchedule = DB.MonthlySchedule.load(viewYear, viewMonth);
+      closeModal('markModal');
+      renderToday();
+      renderCalendar();
+      renderStatsRow();
+      showToast(action === 'done' ? 'Check marked complete ✓' : 'Check marked as skipped', 'success');
+    }
+
+    function undoShift(dateStr, slotKey) {
+      if (!confirm('Undo this completion and reset to pending?')) return;
+      DB.MonthlySchedule.unmarkShift(dateStr, slotKey);
+      currentSchedule = DB.MonthlySchedule.load(viewYear, viewMonth);
+      renderToday(); renderCalendar(); renderStatsRow();
+      showToast('Reset to pending', 'info');
+    }
+
+    function undoSubShift(dateStr, slotKey) {
+      undoShift(dateStr, slotKey);
+    }
+
+    // ================================================================
+    //  MONTHLY CALENDAR
+    // ================================================================
+    function changeCalMonth(delta) {
+      calViewMonth += delta;
+      if (calViewMonth > 12) { calViewMonth = 1; calViewYear++; }
+      if (calViewMonth < 1) { calViewMonth = 12; calViewYear--; }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const sched = DB.MonthlySchedule.load(calViewYear, calViewMonth);
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      document.getElementById('calMonthTitle').textContent =
+        `${MONTH_NAMES[calViewMonth - 1]} ${calViewYear}`;
+
+      const grid = document.getElementById('calGrid');
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      let html = days.map(d => `<div class="cal-header">${d}</div>`).join('');
+
+      if (!sched) {
+        grid.innerHTML = html + `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">
+      No schedule generated for ${MONTH_NAMES[calViewMonth - 1]} ${calViewYear}.
+      <br/>Use <strong>Schedule Settings</strong> to generate one.
+    </div>`;
+        return;
+      }
+
+      const firstDay = new Date(calViewYear, calViewMonth - 1, 1).getDay();
+      for (let i = 0; i < firstDay; i++) html += `<div class="cal-day cal-empty"></div>`;
+
+      const allSlots = ['1a', '1b', '2a', '2b', '3a', '3b'];
+
+      sched.days.forEach(d => {
+        const isToday = d.date === todayStr;
+        const statuses = allSlots.map(k => d[`status${k}`] ?? d[`status${k[0]}`] ?? 'pending');
+        const tasks = allSlots.map(k => d[`shift${k}`] ?? (k.endsWith('a') ? d[`shift${k[0]}`] : null));
+
+        const dots = statuses.map(s =>
+          `<div class="cal-dot" style="background:${s === 'done' ? '#00e676' : s === 'skipped' ? '#f0a500' : '#334155'};"></div>`
+        ).join('');
+
+        const validTasks = tasks.filter(Boolean);
+        const pills = validTasks.slice(0, 4).map((tid, i) => {
+          const t = Scheduler.getTask(tid);
+          const c = Scheduler.getTaskColor(tid);
+          const s = statuses[i];
+          return t ? `<div class="cal-task-pill" style="background:${c.bg};color:${c.color};
+        ${s === 'done' ? 'opacity:0.6;text-decoration:line-through;' : ''}">${t.code}</div>` : '';
+        }).join('');
+
+        const extraCount = validTasks.length - 4;
+        const extraPill = extraCount > 0 ? `<div class="cal-task-pill" style="background:rgba(255,255,255,.05);color:var(--text-muted);font-size:9px;">+${extraCount}</div>` : '';
+
+        html += `<div class="cal-day ${isToday ? 'today' : ''}" onclick="showDayDetail('${d.date}')">
+      <div class="cal-done-dot">${dots}</div>
+      <div class="cal-day-num">${d.day}</div>
+      ${pills}${extraPill}
+    </div>`;
+      });
+
+      grid.innerHTML = html;
+    }
+
+    function showDayDetail(dateStr) {
+      const [y, m] = dateStr.split('-').map(Number);
+      const sched = DB.MonthlySchedule.load(y, m);
+      if (!sched) return;
+      const day = sched.days.find(d => d.date === dateStr);
+      if (!day) return;
+
+      const dateObj = new Date(dateStr + 'T12:00:00');
+      const dateLabel = dateObj.toLocaleDateString('en-GB',
+        { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+      document.getElementById('dayModalTitle').textContent = `${dateLabel} (6 Checks)`;
+
+      let body = '';
+      [1, 2, 3].forEach(s => {
+        const slots = [`${s}a`, `${s}b`];
+        body += `<div style="background:var(--bg-card-2);border:1px solid var(--border);
+      border-radius:var(--radius-md);padding:14px;margin-bottom:12px;border-left:3px solid ${SHIFT_COLORS[s - 1]};">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:12px;font-weight:800;color:${SHIFT_COLORS[s - 1]};text-transform:uppercase;">
+          Shift ${s} · ${SHIFT_SHORT[s - 1]}
+        </span>
+      </div>`;
+
+        slots.forEach((slotKey, idx) => {
+          const tid = day[`shift${slotKey}`] || (idx === 0 ? day[`shift${s}`] : null);
+          const status = day[`status${slotKey}`] || (idx === 0 ? (day[`status${s}`] || 'pending') : 'pending');
+          const doneBy = day[`doneBy${slotKey}`] || (idx === 0 ? day[`doneBy${s}`] : null);
+          const doneAt = day[`doneAt${slotKey}`] || (idx === 0 ? day[`doneAt${s}`] : null);
+          const notes = day[`notes${slotKey}`] || (idx === 0 ? day[`notes${s}`] : '');
+          const task = Scheduler.getTask(tid);
+          const colors = Scheduler.getTaskColor(tid);
+
+          body += `
+          <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+              <span style="font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;">Check ${idx + 1}</span>
+              <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;
+                background:${status === 'done' ? 'rgba(0,230,118,.12)' : status === 'skipped' ? 'rgba(240,165,0,.12)' : 'rgba(100,116,139,.1)'};
+                color:${status === 'done' ? '#00e676' : status === 'skipped' ? '#f0a500' : '#64748b'};">
+                ${status === 'done' ? '✓ Done' : status === 'skipped' ? '⚠ Skipped' : 'Pending'}
+              </span>
+            </div>
+            ${task ? `
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-bottom:2px;">${task.code}</div>
+              <div style="font-size:12px;font-weight:700;margin-bottom:4px;">${esc(task.name)}</div>
+              <span style="font-size:9px;padding:2px 7px;border-radius:100px;background:${colors.bg};color:${colors.color};">${task.category}</span>
+              ${task.special ? `<span style="font-size:9px;padding:2px 7px;border-radius:100px;background:rgba(244,63,94,.1);color:#fb7185;margin-left:4px;">📋 Special Sheet</span>` : ''}
+            ` : '<div style="color:var(--text-muted);font-size:12px;">No task assigned</div>'}
+            ${doneBy ? `<div style="margin-top:6px;font-size:11px;color:var(--text-secondary);">By: <strong>${esc(doneBy)}</strong>${doneAt ? ' at ' + new Date(doneAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : ''}${notes ? '<br/><em style="font-size:10px;">' + esc(notes) + '</em>' : ''}</div>` : ''}
+          </div>`;
+        });
+
+        body += `</div>`;
+      });
+
+      document.getElementById('dayModalBody').innerHTML = body;
+      openModal('dayModal');
+    }
+
+    // ================================================================
+    //  TASK COVERAGE
+    // ================================================================
+    function renderCoverage() {
+      const el = document.getElementById('coverageContent');
+      if (!currentSchedule) {
+        el.innerHTML = buildNoScheduleCard(viewYear, viewMonth);
+        return;
+      }
+
+      // Count actual appearances in schedule across all 6 slots
+      const counts = {};
+      Scheduler.MASTER_TASKS.forEach(t => { counts[t.id] = 0; });
+      const allSlots = ['1a', '1b', '2a', '2b', '3a', '3b'];
+
+      currentSchedule.days.forEach(d => {
+        allSlots.forEach(k => {
+          const id = d[`shift${k}`] ?? (k.endsWith('a') ? d[`shift${k[0]}`] : null);
+          if (id && counts[id] !== undefined) counts[id]++;
+        });
+      });
+
+      const max = Math.max(...Object.values(counts));
+      const PRIORITY_COLORS = { critical: '#ff4757', high: '#f0a500', medium: '#38bdf8', low: '#64748b' };
+
+      const tasksByPriority = { critical: [], high: [], medium: [], low: [] };
+      Scheduler.MASTER_TASKS.forEach(t => {
+        if (tasksByPriority[t.priority]) tasksByPriority[t.priority].push(t);
+      });
+
+      let html = `<div style="margin-bottom:16px;font-size:13px;color:var(--text-secondary);">
+    Showing scheduled frequency for each of the 25 tasks in
+    <strong>${MONTH_NAMES[viewMonth - 1]} ${viewYear}</strong>
+    (${currentSchedule.daysInMonth} days × 6 checks = ${currentSchedule.totalSlots} total slots)
+  </div>`;
+
+      ['critical', 'high', 'medium', 'low'].forEach(priority => {
+        const tasks = tasksByPriority[priority];
+        if (!tasks.length) return;
+        const col = PRIORITY_COLORS[priority];
+        html += `<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:${col};margin-bottom:10px;margin-top:18px;">${priority} Priority</div>
+    <div class="coverage-grid">`;
+        tasks.forEach(t => {
+          const c = counts[t.id] || 0;
+          const col2 = Scheduler.getTaskColor(t.id);
+          const barW = max > 0 ? Math.round((c / max) * 100) : 0;
+          html += `<div class="coverage-item">
+        <div class="coverage-code">${t.code}</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="coverage-name">${esc(t.name)}</div>
+            <div class="coverage-count" style="color:${col2.color};">${c}</div>
+          </div>
+          <div class="coverage-bar-wrap">
+            <div class="coverage-bar" style="width:${barW}%;background:${col2.color};"></div>
+          </div>
+          ${t.special ? '<div style="font-size:10px;color:#fb7185;margin-top:3px;">📋 Special sheet required</div>' : ''}
+        </div>
+      </div>`;
+        });
+        html += '</div>';
+      });
+
+      el.innerHTML = html;
+    }
+
+    // ================================================================
+    //  ADMIN — GENERATE SCHEDULE
+    // ================================================================
+    function openAdminPanel() {
+      const now = new Date();
+      document.getElementById('genYear').value = now.getFullYear();
+      document.getElementById('genMonth').value = now.getMonth() + 1;
+      previewFrequencies();
+      openModal('adminModal');
+    }
+
+    function updateWeight(name) {
+      const val = document.getElementById(`s${name}`).value;
+      document.getElementById(`w${name}`).textContent = val;
+      previewFrequencies();
+    }
+
+    function previewFrequencies() {
+      const y = Number(document.getElementById('genYear').value);
+      const m = Number(document.getElementById('genMonth').value);
+      const days = new Date(y, m, 0).getDate();
+      const slots = days * 6; // 6 checks per 24h
+      const weights = getWeightsFromUI();
+      const totalW = Scheduler.MASTER_TASKS.reduce((s, t) => s + (weights[t.priority] || 1), 0);
+      const preview = document.getElementById('freqPreview');
+      const critical = Math.round((weights.critical / totalW) * slots);
+      const high = Math.round((weights.high / totalW) * slots);
+      const medium = Math.round((weights.medium / totalW) * slots);
+      const low = Math.round((weights.low / totalW) * slots);
+      preview.innerHTML = `
+    <span style="color:#ff4757;">Critical ~${critical}×</span> ·
+    <span style="color:#f0a500;">High ~${high}×</span> ·
+    <span style="color:#38bdf8;">Medium ~${medium}×</span> ·
+    <span style="color:#64748b;">Low ~${low}×</span>
+    &nbsp;(${days}d × 6 checks = ${slots} slots)`;
+    }
+
+    function getWeightsFromUI() {
+      return {
+        critical: Number(document.getElementById('sCritical').value),
+        high: Number(document.getElementById('sHigh').value),
+        medium: Number(document.getElementById('sMedium').value),
+        low: Number(document.getElementById('sLow').value),
+      };
+    }
+
+    function generateAndSave() {
+      const y = Number(document.getElementById('genYear').value);
+      const m = Number(document.getElementById('genMonth').value);
+      const weights = getWeightsFromUI();
+
+      if (DB.MonthlySchedule.exists(y, m)) {
+        if (!confirm(`A schedule for ${MONTH_NAMES[m - 1]} ${y} already exists. Overwrite it?\n\nAll marked completions will be LOST.`)) return;
+      }
+
+      const btn = document.querySelector('#adminModal .btn-primary');
+      btn.disabled = true; btn.textContent = 'Generating…';
+
+      setTimeout(() => {
+        const sched = Scheduler.generateMonthlySchedule(y, m, weights);
+
+        // Validate
+        const validation = Scheduler.validateSchedule(sched);
+        DB.MonthlySchedule.save(sched);
+
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-6.24"/></svg> Generate Schedule`;
+
+        closeModal('adminModal');
+
+        // Reload if generated for current view month
+        if (y === viewYear && m === viewMonth) {
+          currentSchedule = sched;
+          viewYear = y; viewMonth = m;
+          calViewYear = y; calViewMonth = m;
+        }
+
+        renderStatsRow(); renderToday(); renderCalendar(); renderCoverage();
+
+        const vMsg = validation.ok
+          ? `✓ Valid — ${validation.uniqueTasks}/25 tasks · ${sched.totalSlots} total slots (6 checks/day)`
+          : `⚠ ${validation.violations.length} constraint(s) flagged`;
+        showToast(`Schedule generated for ${MONTH_NAMES[m - 1]} ${y}. ${vMsg}`, 'success');
+      }, 200);
+    }
+
+    function populateGenDropdowns() {
+      const now = new Date();
+      const yEl = document.getElementById('genYear');
+      const mEl = document.getElementById('genMonth');
+      for (let y = now.getFullYear(); y <= now.getFullYear() + 2; y++) {
+        yEl.innerHTML += `<option value="${y}">${y}</option>`;
+      }
+      MONTH_NAMES.forEach((n, i) => {
+        mEl.innerHTML += `<option value="${i + 1}">${n}</option>`;
+      });
+      yEl.value = now.getFullYear();
+      mEl.value = now.getMonth() + 1;
+      ['genYear', 'genMonth'].forEach(id =>
+        document.getElementById(id).addEventListener('change', previewFrequencies)
+      );
+    }
+
+    // ================================================================
+    //  HELPERS
+    // ================================================================
+    function buildNoScheduleCard(y, m) {
+      const isAdmin = ['System Administrator', 'Electrical Supervisor'].includes(currentUser?.role);
+      return `<div class="no-schedule">
+    <div class="no-schedule-icon">⚙️</div>
+    <h3>No Schedule for ${MONTH_NAMES[m - 1]} ${y}</h3>
+    <p>The monthly shift schedule hasn't been generated yet.
+       ${isAdmin ? 'Use <strong>Schedule Settings</strong> to automatically assign the 24 routine tasks across all 3 shifts for every day of the month.' : 'Please ask your supervisor or administrator to generate the schedule.'}</p>
+    ${isAdmin ? `<button class="btn-primary" onclick="openAdminPanel()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-6.24"/></svg>
+      Generate ${MONTH_NAMES[m - 1]} ${y} Schedule
+    </button>` : ''}
+  </div>`;
+    }
+
+    function esc(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+
+</html>

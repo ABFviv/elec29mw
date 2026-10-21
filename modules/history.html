@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>History — PowerCore EMS</title>
+  <meta name="description" content="Full audit history of all maintenance records for the 29MW Power Plant."/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../css/module.css"/>
+</head>
+<body class="dash-body">
+<header class="topbar" id="topbar"></header>
+
+<main class="dash-main">
+  <div class="mod-header">
+    <div class="mod-title-row">
+      <div class="mod-icon-wrap" style="background:linear-gradient(135deg,rgba(56,189,248,0.15),rgba(129,140,248,0.1));border-color:rgba(56,189,248,0.25);">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.7" stroke-linecap="round">
+          <polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 0 .5-4H1"/><polyline points="1 3 1 7 5 7"/>
+        </svg>
+      </div>
+      <div class="mod-title">
+        <h1>History</h1>
+        <p>Complete audit trail — search all records by date, person, device, or module</p>
+      </div>
+    </div>
+    <div class="mod-actions">
+      <span id="histCount" style="font-size:13px;color:var(--text-secondary);"></span>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="mod-stats-row" id="histStats"></div>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <div class="search-wrap" style="flex:2;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search by equipment, person, description, module…" oninput="renderHistory()"/>
+    </div>
+    <select class="filter-select" id="filterModule" onchange="renderHistory()">
+      <option value="">All Modules</option>
+      <option value="Daily Check">Daily Check</option>
+      <option value="Corrective Maintenance">Corrective Maintenance</option>
+      <option value="Preventive Maintenance">Preventive Maintenance</option>
+      <option value="Spare Parts">Spare Parts</option>
+      <option value="Training">Training</option>
+    </select>
+    <input type="date" class="filter-select" id="filterFrom" onchange="renderHistory()" title="From date"/>
+    <input type="date" class="filter-select" id="filterTo"   onchange="renderHistory()" title="To date"/>
+    <div class="search-wrap" style="min-width:160px;flex:unset;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <input type="text" class="search-input" id="filterPerson" placeholder="Filter by person…" oninput="renderHistory()"/>
+    </div>
+    <button class="btn-secondary" onclick="clearFilters()">Clear</button>
+  </div>
+
+  <!-- Results count -->
+  <div id="resultCount" style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;"></div>
+
+  <!-- History list wrapped in table-wrap -->
+  <div class="table-wrap" style="padding:0;">
+    <div id="historyList" style="padding:0 24px;"></div>
+    <div id="historyEmpty" class="empty-state" style="display:none;">
+      <div class="empty-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round">
+          <polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 0 .5-4H1"/><polyline points="1 3 1 7 5 7"/>
+        </svg>
+      </div>
+      <h3>No records found</h3>
+      <p>No history records match your current filters. Try adjusting or clearing the filters.</p>
+      <button class="btn-secondary" onclick="clearFilters()">Clear All Filters</button>
+    </div>
+    <!-- Load more -->
+    <div id="loadMoreWrap" style="text-align:center;padding:16px;display:none;">
+      <button class="btn-secondary" onclick="loadMore()">Load More Records</button>
+    </div>
+  </div>
+</main>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script>
+const PAGE_SIZE = 40;
+let shownCount = PAGE_SIZE;
+let filteredData = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+  const session = DB.Session.require();
+  if (!session) return;
+  renderTopbar('History');
+  renderStats();
+  renderHistory();
+});
+
+// Module icon config
+const MOD_CONFIG = {
+  'Daily Check':             { color:'#00d4ff', bg:'rgba(0,212,255,0.1)',  icon:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>' },
+  'Corrective Maintenance':  { color:'#ff4757', bg:'rgba(255,71,87,0.1)',  icon:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>' },
+  'Preventive Maintenance':  { color:'#f0a500', bg:'rgba(240,165,0,0.1)',  icon:'<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>' },
+  'Spare Parts':             { color:'#a78bfa', bg:'rgba(124,58,237,0.1)', icon:'<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>' },
+  'Training':                { color:'#fb7185', bg:'rgba(244,63,94,0.1)',  icon:'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>' },
+};
+
+const MODULE_BADGE_COLORS = {
+  'Daily Check':             'background:rgba(0,212,255,0.1);color:#00d4ff;',
+  'Corrective Maintenance':  'background:rgba(255,71,87,0.1);color:#ff4757;',
+  'Preventive Maintenance':  'background:rgba(240,165,0,0.1);color:#f0a500;',
+  'Spare Parts':             'background:rgba(124,58,237,0.1);color:#a78bfa;',
+  'Training':                'background:rgba(244,63,94,0.1);color:#fb7185;',
+};
+
+function renderStats() {
+  const all = DB.History.getAll();
+  const modules = {};
+  all.forEach(i => { modules[i.module] = (modules[i.module]||0) + 1; });
+  document.getElementById('histStats').innerHTML = `
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#38bdf8;">${all.length}</div><div class="stat-mini-lbl">Total Records</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#00d4ff;">${modules['Daily Check']||0}</div><div class="stat-mini-lbl">Daily Check Items</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#ff4757;">${modules['Corrective Maintenance']||0}</div><div class="stat-mini-lbl">CM Records</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#f0a500;">${modules['Preventive Maintenance']||0}</div><div class="stat-mini-lbl">PM Records</div></div>
+  `;
+  document.getElementById('histCount').textContent = `${all.length} total records`;
+}
+
+function renderHistory() {
+  shownCount = PAGE_SIZE;
+  const search      = document.getElementById('searchInput').value.toLowerCase();
+  const filterMod   = document.getElementById('filterModule').value;
+  const filterFrom  = document.getElementById('filterFrom').value;
+  const filterTo    = document.getElementById('filterTo').value;
+  const filterPerson = document.getElementById('filterPerson').value.toLowerCase();
+
+  const all = DB.History.getAll();
+  filteredData = all.filter(item => {
+    if (filterMod    && item.module !== filterMod) return false;
+    if (filterFrom   && item.date < filterFrom)    return false;
+    if (filterTo     && item.date > filterTo)      return false;
+    if (filterPerson && !(item.person||'').toLowerCase().includes(filterPerson)) return false;
+    if (search) {
+      const hay = [item.title, item.detail, item.person, item.module, item.category].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('resultCount').textContent = `Showing ${Math.min(shownCount, filteredData.length)} of ${filteredData.length} record${filteredData.length!==1?'s':''}`;
+  displayPage();
+}
+
+function displayPage() {
+  const list  = document.getElementById('historyList');
+  const empty = document.getElementById('historyEmpty');
+  const loadMore = document.getElementById('loadMoreWrap');
+
+  if (!filteredData.length) {
+    list.innerHTML = '';
+    empty.style.display = '';
+    loadMore.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const visible = filteredData.slice(0, shownCount);
+  let lastDate = '';
+
+  list.innerHTML = visible.map(item => {
+    const cfg = MOD_CONFIG[item.module] || { color:'#00d4ff', bg:'rgba(0,212,255,0.1)', icon:'' };
+    const badgeStyle = MODULE_BADGE_COLORS[item.module] || '';
+    let dateHeader = '';
+    if (item.date !== lastDate) {
+      lastDate = item.date;
+      const dObj = new Date(item.date + 'T12:00:00');
+      const isToday = item.date === DB.fmt.today();
+      const label = isToday ? 'Today' : dObj.toLocaleDateString('en-GB', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+      dateHeader = `<div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;padding:16px 0 8px;border-top:${lastDate===item.date&&visible.indexOf(item)>0?'none':'1px solid var(--border)'};margin-top:${visible.indexOf(item)>0?'4px':'0'};">${label}</div>`;
+    }
+
+    return `${dateHeader}
+    <div class="history-item">
+      <div class="h-icon" style="background:${cfg.bg};">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${cfg.color}" stroke-width="1.8" stroke-linecap="round">${cfg.icon}</svg>
+      </div>
+      <div class="h-body">
+        <div class="h-title">${esc(item.title)}</div>
+        ${item.detail ? `<div class="h-detail">${esc(item.detail.length>120 ? item.detail.slice(0,120)+'…' : item.detail)}</div>` : ''}
+        <div class="h-meta">
+          <span class="h-module" style="${badgeStyle};border-radius:100px;padding:2px 8px;">${item.module}</span>
+          ${item.person ? `<span class="h-person">👤 ${esc(item.person)}</span>` : ''}
+          <span class="h-date">${DB.fmt.date(item.date)}</span>
+          ${item.category ? `<span style="font-size:10px;color:var(--text-muted);">${esc(item.category)}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  loadMore.style.display = filteredData.length > shownCount ? '' : 'none';
+  document.getElementById('resultCount').textContent = `Showing ${Math.min(shownCount, filteredData.length)} of ${filteredData.length} record${filteredData.length!==1?'s':''}`;
+}
+
+function loadMore() {
+  shownCount += PAGE_SIZE;
+  displayPage();
+}
+
+function clearFilters() {
+  document.getElementById('searchInput').value  = '';
+  document.getElementById('filterModule').value = '';
+  document.getElementById('filterFrom').value   = '';
+  document.getElementById('filterTo').value     = '';
+  document.getElementById('filterPerson').value = '';
+  renderHistory();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Preventive Maintenance — PowerCore EMS</title>
+  <meta name="description" content="Plan and track scheduled preventive maintenance for the 29MW Power Plant."/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../css/module.css"/>
+</head>
+<body class="dash-body">
+<header class="topbar" id="topbar"></header>
+
+<main class="dash-main">
+  <div class="mod-header">
+    <div class="mod-title-row">
+      <div class="mod-icon-wrap" style="background:linear-gradient(135deg,rgba(240,165,0,0.15),rgba(255,107,0,0.1));border-color:rgba(240,165,0,0.25);">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.7" stroke-linecap="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      </div>
+      <div class="mod-title">
+        <h1>Preventive Maintenance</h1>
+        <p>Plan future maintenance tasks and track their completion status</p>
+      </div>
+    </div>
+    <div class="mod-actions">
+      <button class="btn-primary" onclick="openAddModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add PM Task
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="mod-stats-row" id="pmStats"></div>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search by equipment or task…" oninput="renderTable()"/>
+    </div>
+    <select class="filter-select" id="filterStatus" onchange="renderTable()">
+      <option value="">All Statuses</option>
+      <option value="planned">Planned</option>
+      <option value="in-progress">In Progress</option>
+      <option value="completed">Completed</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <select class="filter-select" id="filterPriority" onchange="renderTable()">
+      <option value="">All Priorities</option>
+      <option value="critical">Critical</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Scheduled Date</th><th>Equipment</th><th>Task</th><th>Assigned To</th><th>Priority</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="pmTableBody"></tbody>
+    </table>
+    <div id="pmEmpty" class="empty-state" style="display:none;">
+      <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+      <h3>No PM tasks found</h3>
+      <p>No preventive maintenance tasks match your filters. Click "Add PM Task" to create one.</p>
+    </div>
+  </div>
+</main>
+
+<!-- Add / Edit Modal -->
+<div class="modal-overlay" id="pmModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2 id="pmModalTitle">Add PM Task</h2>
+      <button class="modal-close" onclick="closeModal('pmModal')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pm_id"/>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Equipment / Device *</label>
+          <input type="text" id="pm_equipment" placeholder="e.g. Generator, Transformer T-1"/>
+        </div>
+        <div class="form-field">
+          <label>Location</label>
+          <input type="text" id="pm_location" placeholder="e.g. Generator Hall"/>
+        </div>
+        <div class="form-field full">
+          <label>Task Description *</label>
+          <textarea id="pm_task" placeholder="Describe the maintenance task to be performed…" rows="3"></textarea>
+        </div>
+        <div class="form-field">
+          <label>Scheduled Date *</label>
+          <input type="date" id="pm_date"/>
+        </div>
+        <div class="form-field">
+          <label>Estimated Duration (hours)</label>
+          <input type="number" id="pm_duration" placeholder="e.g. 4" step="0.5" min="0"/>
+        </div>
+        <div class="form-field">
+          <label>Assigned To *</label>
+          <select id="pm_tech">
+            <option value="">Select technician</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Priority</label>
+          <select id="pm_priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Frequency</label>
+          <select id="pm_freq">
+            <option value="">One-time</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="semi-annual">Semi-Annual</option>
+            <option value="annual">Annual</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Status</label>
+          <select id="pm_status">
+            <option value="planned">Planned</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label>Notes / Instructions</label>
+          <textarea id="pm_notes" placeholder="Special instructions, tools required, safety precautions…" rows="2"></textarea>
+        </div>
+        <!-- Completion fields (shown only when completed) -->
+        <div class="form-field full" id="completionField" style="display:none;">
+          <label>Completion Notes</label>
+          <textarea id="pm_completion" placeholder="What was done, any findings or issues…" rows="2"></textarea>
+        </div>
+        <div class="form-field" id="completedDateField" style="display:none;">
+          <label>Actual Completion Date</label>
+          <input type="date" id="pm_completedDate"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('pmModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveRecord()">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const session = DB.Session.require();
+  if (!session) return;
+  renderTopbar('Preventive Maintenance');
+  document.getElementById('pm_date').value = DB.fmt.today();
+  document.getElementById('pm_status').addEventListener('change', e => {
+    const isCompleted = e.target.value === 'completed';
+    document.getElementById('completionField').style.display    = isCompleted ? '' : 'none';
+    document.getElementById('completedDateField').style.display = isCompleted ? '' : 'none';
+    if (isCompleted) document.getElementById('pm_completedDate').value = DB.fmt.today();
+  });
+  renderStats();
+  renderTable();
+  populateTechDropdown();
+});
+
+function populateTechDropdown() {
+  document.getElementById('pm_tech').innerHTML = '<option value="">Select technician</option>' +
+    DB.Users.getActive().map(u => `<option value="${u.name}">${u.name} — ${u.role}</option>`).join('');
+}
+
+function renderStats() {
+  const s = DB.Preventive.getStats();
+  const today = DB.fmt.today();
+  document.getElementById('pmStats').innerHTML = `
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#f0a500;">${s.total}</div><div class="stat-mini-lbl">Total PM Tasks</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#38bdf8;">${s.upcoming}</div><div class="stat-mini-lbl">Upcoming</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#ff4757;">${s.overdue}</div><div class="stat-mini-lbl">Overdue</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#00e676;">${s.done}</div><div class="stat-mini-lbl">Completed</div></div>
+  `;
+}
+
+function renderTable() {
+  const search    = document.getElementById('searchInput').value.toLowerCase();
+  const fStatus   = document.getElementById('filterStatus').value;
+  const fPriority = document.getElementById('filterPriority').value;
+  const today = DB.fmt.today();
+
+  let data = DB.Preventive.getAll().filter(r => {
+    if (fStatus   && r.status   !== fStatus)   return false;
+    if (fPriority && r.priority !== fPriority) return false;
+    if (search) {
+      const hay = [r.equipment, r.task, r.assignedTo, r.location].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById('pmTableBody');
+  const empty = document.getElementById('pmEmpty');
+  if (!data.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  const prioClass = { low:'priority-low', medium:'priority-medium', high:'priority-high', critical:'priority-critical' };
+
+  tbody.innerHTML = data.map(r => {
+    const isOverdue = r.status === 'planned' && r.scheduledDate < today;
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:600;${isOverdue?'color:#ff4757;':''}">${DB.fmt.date(r.scheduledDate)}</div>
+          ${isOverdue ? '<div style="font-size:11px;color:#ff4757;font-weight:700;">⚠ OVERDUE</div>' : ''}
+          ${r.frequency ? `<div class="td-sub">${r.frequency}</div>` : ''}
+        </td>
+        <td>
+          <div class="td-main">${esc(r.equipment)}</div>
+          ${r.location ? `<div class="td-sub">${esc(r.location)}</div>` : ''}
+        </td>
+        <td style="max-width:220px;">
+          <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;font-size:14px;">${esc(r.task)}</div>
+          ${r.duration ? `<div class="td-sub">Est. ${r.duration}h</div>` : ''}
+        </td>
+        <td class="td-muted">${esc(r.assignedTo)}</td>
+        <td><span class="${prioClass[r.priority] || 'priority-medium'}">● ${(r.priority||'').toUpperCase()}</span></td>
+        <td><span class="badge badge-${isOverdue && r.status==='planned' ? 'overdue' : r.status}">${isOverdue && r.status==='planned' ? 'overdue' : r.status}</span></td>
+        <td>
+          <div class="td-actions">
+            <button class="btn-icon" onclick="editRecord('${r.id}')" title="Edit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            ${r.status !== 'completed' ? `<button class="btn-icon" style="color:#00e676;border-color:rgba(0,230,118,0.3);" onclick="markComplete('${r.id}')" title="Mark Complete">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </button>` : ''}
+            <button class="btn-icon del" onclick="deleteRecord('${r.id}')" title="Delete">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openAddModal() {
+  document.getElementById('pm_id').value = '';
+  document.getElementById('pmModalTitle').textContent = 'Add PM Task';
+  document.getElementById('pm_equipment').value = '';
+  document.getElementById('pm_location').value  = '';
+  document.getElementById('pm_task').value = '';
+  document.getElementById('pm_date').value = DB.fmt.today();
+  document.getElementById('pm_duration').value = '';
+  document.getElementById('pm_priority').value = 'medium';
+  document.getElementById('pm_freq').value = '';
+  document.getElementById('pm_status').value = 'planned';
+  document.getElementById('pm_notes').value = '';
+  document.getElementById('pm_completion').value = '';
+  document.getElementById('completionField').style.display = 'none';
+  document.getElementById('completedDateField').style.display = 'none';
+  populateTechDropdown();
+  openModal('pmModal');
+}
+
+function editRecord(id) {
+  const r = DB.Preventive.getById(id);
+  if (!r) return;
+  document.getElementById('pm_id').value = r.id;
+  document.getElementById('pmModalTitle').textContent = 'Edit PM Task';
+  document.getElementById('pm_equipment').value = r.equipment || '';
+  document.getElementById('pm_location').value  = r.location  || '';
+  document.getElementById('pm_task').value = r.task || '';
+  document.getElementById('pm_date').value = r.scheduledDate || '';
+  document.getElementById('pm_duration').value = r.duration || '';
+  document.getElementById('pm_priority').value = r.priority || 'medium';
+  document.getElementById('pm_freq').value = r.frequency || '';
+  document.getElementById('pm_status').value = r.status || 'planned';
+  document.getElementById('pm_notes').value = r.notes || '';
+  document.getElementById('pm_completion').value = r.completionNotes || '';
+  const isCompleted = r.status === 'completed';
+  document.getElementById('completionField').style.display    = isCompleted ? '' : 'none';
+  document.getElementById('completedDateField').style.display = isCompleted ? '' : 'none';
+  document.getElementById('pm_completedDate').value = r.completedDate || '';
+  populateTechDropdown();
+  document.getElementById('pm_tech').value = r.assignedTo || '';
+  openModal('pmModal');
+}
+
+function markComplete(id) {
+  DB.Preventive.update(id, { status: 'completed', completedDate: DB.fmt.today() });
+  renderStats(); renderTable();
+  showToast('Task marked as completed', 'success');
+}
+
+function saveRecord() {
+  const id   = document.getElementById('pm_id').value;
+  const equip = document.getElementById('pm_equipment').value.trim();
+  const task  = document.getElementById('pm_task').value.trim();
+  const date  = document.getElementById('pm_date').value;
+  const tech  = document.getElementById('pm_tech').value;
+  if (!equip || !task || !date || !tech) {
+    showToast('Equipment, task, date, and technician are required', 'error'); return;
+  }
+  const data = {
+    equipment: equip, location: document.getElementById('pm_location').value.trim(),
+    task, scheduledDate: date, assignedTo: tech,
+    duration:    document.getElementById('pm_duration').value,
+    priority:    document.getElementById('pm_priority').value,
+    frequency:   document.getElementById('pm_freq').value,
+    status:      document.getElementById('pm_status').value,
+    notes:       document.getElementById('pm_notes').value.trim(),
+    completionNotes: document.getElementById('pm_completion').value.trim(),
+    completedDate:   document.getElementById('pm_completedDate').value,
+  };
+  if (id) { DB.Preventive.update(id, data); showToast('PM task updated', 'success'); }
+  else     { DB.Preventive.add(data);        showToast('PM task added', 'success'); }
+  closeModal('pmModal'); renderStats(); renderTable();
+}
+
+function deleteRecord(id) {
+  if (!confirm('Delete this PM task permanently?')) return;
+  DB.Preventive.remove(id); renderStats(); renderTable();
+  showToast('Task deleted', 'info');
+}
+</script>
+</body>
+</html>
