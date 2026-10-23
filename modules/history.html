@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Audit History — 29MW Plant EMS</title>
+  <meta name="description" content="Organized audit trail and maintenance activity history for the 29MW Power Plant."/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../css/module.css"/>
+  <link rel="stylesheet" href="../css/print.css"/>
+  <style>
+    /* ---- History Organization Styles ---- */
+    .hist-module-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 18px;
+    }
+    .hist-tab {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 100px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+      transition: all 0.25s ease;
+    }
+    .hist-tab:hover {
+      border-color: rgba(0, 212, 255, 0.4);
+      color: var(--text-primary);
+    }
+    .hist-tab.active {
+      background: rgba(0, 212, 255, 0.12);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      font-weight: 700;
+      box-shadow: 0 0 16px rgba(0, 212, 255, 0.15);
+    }
+    .hist-tab-count {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 100px;
+      background: rgba(255, 255, 255, 0.08);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .hist-tab.active .hist-tab-count {
+      background: rgba(0, 212, 255, 0.25);
+      color: #fff;
+    }
+
+    /* Timeline container */
+    .timeline-container {
+      position: relative;
+      padding: 10px 0 30px 24px;
+    }
+    .timeline-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 11px;
+      width: 2px;
+      background: linear-gradient(180deg, rgba(0,212,255,0.4) 0%, rgba(255,255,255,0.06) 100%);
+    }
+
+    /* Date group header */
+    .timeline-date-group {
+      position: relative;
+      margin: 22px 0 14px -24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .timeline-date-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-card-2);
+      border: 1px solid var(--border);
+      padding: 5px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .timeline-date-badge.is-today {
+      border-color: rgba(0, 212, 255, 0.4);
+      background: rgba(0, 212, 255, 0.1);
+      color: var(--cyan);
+    }
+    .timeline-date-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Timeline card */
+    .timeline-item {
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      top: 18px;
+      left: -19px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--node-color, #00d4ff);
+      border: 2px solid var(--bg-main, #0b1120);
+      box-shadow: 0 0 10px var(--node-color, #00d4ff);
+      z-index: 2;
+    }
+
+    .hist-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .hist-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    }
+    .hist-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .hist-card-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      flex: 1;
+    }
+    .hist-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      flex-wrap: wrap;
+    }
+    .hist-card-detail {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-top: 8px;
+    }
+    .hist-person-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 2px 9px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .hist-view-mode-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+    .hist-view-mode-btn.active {
+      background: var(--cyan);
+      color: #0b1120;
+      border-color: var(--cyan);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="dash-body">
+<header class="topbar" id="topbar"></header>
+
+<main class="dash-main">
+  <div class="mod-header">
+    <div class="mod-title-row">
+      <div class="mod-icon-wrap" style="background:linear-gradient(135deg,rgba(56,189,248,0.15),rgba(129,140,248,0.1));border-color:rgba(56,189,248,0.25);">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.7" stroke-linecap="round">
+          <polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 0 .5-4H1"/><polyline points="1 3 1 7 5 7"/>
+        </svg>
+      </div>
+      <div class="mod-title">
+        <h1>Audit History & Logs</h1>
+        <p>Organized chronological audit trail — filter by module, engineer, date, or equipment</p>
+      </div>
+    </div>
+    <div class="mod-actions" style="display:flex;gap:8px;">
+      <button class="hist-view-mode-btn" onclick="printFilteredHistory()" style="gap:6px;" title="Print filtered audit report">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print Report
+      </button>
+      <button class="hist-view-mode-btn active" id="btnModeTimeline" onclick="setViewMode('timeline')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="12 8 12 12 14 14"/><circle cx="12" cy="12" r="10"/></svg>
+        Timeline
+      </button>
+      <button class="hist-view-mode-btn" id="btnModeTable" onclick="setViewMode('table')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Table
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="mod-stats-row" id="histStats"></div>
+
+  <!-- Module Filter Tabs -->
+  <div class="hist-module-tabs" id="moduleTabs">
+    <button class="hist-tab active" onclick="setModuleFilter('')">
+      <span>All Activities</span>
+      <span class="hist-tab-count" id="count-all">0</span>
+    </button>
+    <button class="hist-tab" onclick="setModuleFilter('Daily Check')">
+      <span>📋 Daily Checks</span>
+      <span class="hist-tab-count" id="count-daily">0</span>
+    </button>
+    <button class="hist-tab" onclick="setModuleFilter('Corrective Maintenance')">
+      <span>⚡ Corrective Maintenance</span>
+      <span class="hist-tab-count" id="count-cm">0</span>
+    </button>
+    <button class="hist-tab" onclick="setModuleFilter('Preventive Maintenance')">
+      <span>🔍 Preventive Watchlist</span>
+      <span class="hist-tab-count" id="count-pm">0</span>
+    </button>
+    <button class="hist-tab" onclick="setModuleFilter('Spare Parts')">
+      <span>📦 Spare Parts</span>
+      <span class="hist-tab-count" id="count-sp">0</span>
+    </button>
+    <button class="hist-tab" onclick="setModuleFilter('Training')">
+      <span>🎓 Training Course</span>
+      <span class="hist-tab-count" id="count-tr">0</span>
+    </button>
+  </div>
+
+  <!-- Filters Bar -->
+  <div class="filter-bar">
+    <div class="search-wrap" style="flex:2;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search by equipment, engineer, title, or details…" oninput="renderHistory()"/>
+    </div>
+    <input type="date" class="filter-select" id="filterFrom" onchange="renderHistory()" title="From date"/>
+    <input type="date" class="filter-select" id="filterTo"   onchange="renderHistory()" title="To date"/>
+    <div class="search-wrap" style="min-width:170px;flex:unset;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <input type="text" class="search-input" id="filterPerson" placeholder="Filter by engineer…" oninput="renderHistory()"/>
+    </div>
+    <button class="btn-secondary" onclick="clearFilters()">Clear</button>
+  </div>
+
+  <!-- Status / Count bar -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <div id="resultCount" style="font-size:13px;color:var(--text-secondary);font-weight:500;"></div>
+    <div style="display:flex;gap:6px;">
+      <button class="date-pill" onclick="setDateRange('today')">Today</button>
+      <button class="date-pill" onclick="setDateRange('7d')">Past 7 Days</button>
+      <button class="date-pill" onclick="setDateRange('month')">This Month</button>
+      <button class="date-pill" onclick="setDateRange('all')">All Time</button>
+    </div>
+  </div>
+
+  <!-- Results View (Timeline or Table) -->
+  <div id="timelineView" class="timeline-container"></div>
+  
+  <div id="tableView" class="table-wrap" style="display:none;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Module</th>
+          <th>Title / Equipment</th>
+          <th>Details</th>
+          <th>Engineer</th>
+        </tr>
+      </thead>
+      <tbody id="histTableBody"></tbody>
+    </table>
+  </div>
+
+  <div id="historyEmpty" class="empty-state" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px;">
+    <div class="empty-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round">
+        <polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 0 .5-4H1"/><polyline points="1 3 1 7 5 7"/>
+      </svg>
+    </div>
+    <h3>No records found</h3>
+    <p>No audit records match your current filters. Try adjusting your search query or date range.</p>
+    <button class="btn-secondary" onclick="clearFilters()">Clear All Filters</button>
+  </div>
+
+  <!-- Load more button -->
+  <div id="loadMoreWrap" style="text-align:center;padding:20px;display:none;">
+    <button class="btn-secondary" onclick="loadMore()">Load More Records</button>
+  </div>
+</main>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script src="../js/print-engine.js"></script>
+<script src="../js/equipment-dossier.js"></script>
+<script src="../js/mobile-fab.js"></script>
+<script>
+const PAGE_SIZE = 35;
+let shownCount = PAGE_SIZE;
+let filteredData = [];
+let currentModule = '';
+let currentViewMode = 'timeline';
+
+const MOD_CONFIG = {
+  'Daily Check':             { color:'#00d4ff', bg:'rgba(0,212,255,0.12)',  badge:'background:rgba(0,212,255,0.12);color:#00d4ff;' },
+  'Corrective Maintenance':  { color:'#ff4757', bg:'rgba(255,71,87,0.12)',  badge:'background:rgba(255,71,87,0.12);color:#ff4757;' },
+  'Preventive Maintenance':  { color:'#f0a500', bg:'rgba(240,165,0,0.12)',  badge:'background:rgba(240,165,0,0.12);color:#f0a500;' },
+  'Spare Parts':             { color:'#a78bfa', bg:'rgba(167,139,250,0.12)', badge:'background:rgba(167,139,250,0.12);color:#a78bfa;' },
+  'Training':                { color:'#fb7185', bg:'rgba(251,113,133,0.12)', badge:'background:rgba(251,113,133,0.12);color:#fb7185;' },
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const session = DB.Session.require();
+  if (!session) return;
+  renderTopbar('History');
+  renderStats();
+  renderHistory();
+});
+
+function setViewMode(mode) {
+  currentViewMode = mode;
+  document.getElementById('btnModeTimeline').classList.toggle('active', mode === 'timeline');
+  document.getElementById('btnModeTable').classList.toggle('active', mode === 'table');
+  document.getElementById('timelineView').style.display = mode === 'timeline' ? '' : 'none';
+  document.getElementById('tableView').style.display = mode === 'table' ? '' : 'none';
+  displayPage();
+}
+
+function setModuleFilter(mod) {
+  currentModule = mod;
+  document.querySelectorAll('.hist-tab').forEach(tab => {
+    const text = tab.textContent;
+    const isAll = mod === '' && text.includes('All');
+    const isTarget = mod !== '' && text.includes(mod.split(' ')[0]);
+    tab.classList.toggle('active', isAll || isTarget);
+  });
+  renderHistory();
+}
+
+function setDateRange(range) {
+  const today = DB.fmt.today();
+  const fFrom = document.getElementById('filterFrom');
+  const fTo   = document.getElementById('filterTo');
+
+  if (range === 'today') {
+    fFrom.value = today;
+    fTo.value = today;
+  } else if (range === '7d') {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    fFrom.value = d.toISOString().split('T')[0];
+    fTo.value = today;
+  } else if (range === 'month') {
+    const d = new Date();
+    fFrom.value = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    fTo.value = today;
+  } else {
+    fFrom.value = '';
+    fTo.value = '';
+  }
+  renderHistory();
+}
+
+function renderStats() {
+  const all = DB.History.getAll();
+  const counts = { 'Daily Check': 0, 'Corrective Maintenance': 0, 'Preventive Maintenance': 0, 'Spare Parts': 0, 'Training': 0 };
+  all.forEach(i => { if (counts[i.module] !== undefined) counts[i.module]++; });
+
+  document.getElementById('count-all').textContent = all.length;
+  document.getElementById('count-daily').textContent = counts['Daily Check'];
+  document.getElementById('count-cm').textContent = counts['Corrective Maintenance'];
+  document.getElementById('count-pm').textContent = counts['Preventive Maintenance'];
+  document.getElementById('count-sp').textContent = counts['Spare Parts'];
+  document.getElementById('count-tr').textContent = counts['Training'];
+
+  document.getElementById('histStats').innerHTML = `
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#38bdf8;">${all.length}</div><div class="stat-mini-lbl">Total Audit Logs</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#00d4ff;">${counts['Daily Check']}</div><div class="stat-mini-lbl">Daily Checks Logged</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#ff4757;">${counts['Corrective Maintenance']}</div><div class="stat-mini-lbl">Corrective Fixes</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#f0a500;">${counts['Preventive Maintenance']}</div><div class="stat-mini-lbl">Preventive Watch Items</div></div>
+  `;
+}
+
+function renderHistory() {
+  shownCount = PAGE_SIZE;
+  const search       = document.getElementById('searchInput').value.toLowerCase();
+  const filterFrom   = document.getElementById('filterFrom').value;
+  const filterTo     = document.getElementById('filterTo').value;
+  const filterPerson = document.getElementById('filterPerson').value.toLowerCase();
+
+  const all = DB.History.getAll();
+  filteredData = all.filter(item => {
+    if (currentModule && item.module !== currentModule) return false;
+    if (filterFrom    && item.date < filterFrom) return false;
+    if (filterTo      && item.date > filterTo)   return false;
+    if (filterPerson  && !(item.person||'').toLowerCase().includes(filterPerson)) return false;
+    if (search) {
+      const hay = [item.title, item.detail, item.person, item.module, item.category].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  displayPage();
+}
+
+function displayPage() {
+  const timelineEl = document.getElementById('timelineView');
+  const tableEl    = document.getElementById('histTableBody');
+  const emptyEl    = document.getElementById('historyEmpty');
+  const loadMoreEl = document.getElementById('loadMoreWrap');
+
+  if (!filteredData.length) {
+    timelineEl.innerHTML = '';
+    tableEl.innerHTML = '';
+    emptyEl.style.display = '';
+    loadMoreEl.style.display = 'none';
+    document.getElementById('resultCount').textContent = 'Showing 0 records';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  const visible = filteredData.slice(0, shownCount);
+  document.getElementById('resultCount').textContent =
+    `Showing ${Math.min(shownCount, filteredData.length)} of ${filteredData.length} audit records`;
+
+  if (currentViewMode === 'timeline') {
+    let html = '';
+    let lastDate = '';
+
+    visible.forEach((item, index) => {
+      const cfg = MOD_CONFIG[item.module] || { color:'#00d4ff', bg:'rgba(0,212,255,0.12)', badge:'background:rgba(0,212,255,0.12);color:#00d4ff;' };
+
+      // Date Group Header
+      if (item.date !== lastDate) {
+        lastDate = item.date;
+        const isToday = item.date === DB.fmt.today();
+        const dateObj = new Date(item.date + 'T12:00:00');
+        const formatted = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+        html += `
+        <div class="timeline-date-group">
+          <div class="timeline-date-badge ${isToday ? 'is-today' : ''}">
+            ${isToday ? '● TODAY' : '🗓'} ${formatted}
+          </div>
+          <div class="timeline-date-line"></div>
+        </div>`;
+      }
+
+      html += `
+      <div class="timeline-item" style="--node-color:${cfg.color};">
+        <div class="hist-card">
+          <div class="hist-card-header">
+            <span style="${cfg.badge};padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
+              ${item.module}
+            </span>
+            ${item.category ? `<span style="font-size:11px;color:var(--text-muted);font-weight:600;">${esc(item.category)}</span>` : ''}
+            <span class="hist-card-title">${esc(item.title)}</span>
+            <div class="hist-card-meta">
+              ${item.person ? `<span class="hist-person-pill">👤 ${esc(item.person)}</span>` : ''}
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">${DB.fmt.date(item.date)}</span>
+            </div>
+          </div>
+          ${item.detail ? `<div class="hist-card-detail">${esc(item.detail)}</div>` : ''}
+        </div>
+      </div>`;
+    });
+
+    timelineEl.innerHTML = html;
+  } else {
+    // Table View
+    tableEl.innerHTML = visible.map(item => {
+      const cfg = MOD_CONFIG[item.module] || { color:'#00d4ff', bg:'rgba(0,212,255,0.12)', badge:'background:rgba(0,212,255,0.12);color:#00d4ff;' };
+      return `
+      <tr>
+        <td class="td-muted" style="white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:12px;">${DB.fmt.date(item.date)}</td>
+        <td>
+          <span style="${cfg.badge};padding:2px 8px;border-radius:100px;font-size:10.5px;font-weight:700;">${item.module}</span>
+        </td>
+        <td>
+          <div class="td-main">${esc(item.title)}</div>
+          ${item.category ? `<div class="td-sub">${esc(item.category)}</div>` : ''}
+        </td>
+        <td style="max-width:300px;font-size:12.5px;color:var(--text-secondary);">
+          ${item.detail ? esc(item.detail) : '<span style="color:var(--text-muted);">—</span>'}
+        </td>
+        <td>
+          ${item.person ? `<span class="hist-person-pill">👤 ${esc(item.person)}</span>` : '—'}
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  loadMoreEl.style.display = filteredData.length > shownCount ? '' : 'none';
+}
+
+function loadMore() {
+  shownCount += PAGE_SIZE;
+  displayPage();
+}
+
+function clearFilters() {
+  document.getElementById('searchInput').value  = '';
+  document.getElementById('filterFrom').value   = '';
+  document.getElementById('filterTo').value     = '';
+  document.getElementById('filterPerson').value = '';
+  currentModule = '';
+  document.querySelectorAll('.hist-tab').forEach((tab, i) => tab.classList.toggle('active', i === 0));
+  renderHistory();
+}
+
+function printFilteredHistory() {
+  const from = document.getElementById('filterFrom')?.value || '';
+  const to = document.getElementById('filterTo')?.value || '';
+  const person = document.getElementById('filterPerson')?.value || '';
+  const search = document.getElementById('searchInput')?.value || '';
+  PrintEngine.printAuditHistory(currentModule, from, to, person, search);
+}
+</script>
+</body>
+</html>

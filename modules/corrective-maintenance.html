@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Corrective Maintenance — 29MW Plant EMS</title>
+  <meta name="description" content="Log and manage corrective maintenance work orders for the 29MW Power Plant."/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../css/module.css"/>
+  <link rel="stylesheet" href="../css/print.css"/>
+</head>
+<body class="dash-body">
+<header class="topbar" id="topbar"></header>
+
+<main class="dash-main">
+  <div class="mod-header">
+    <div class="mod-title-row">
+      <div class="mod-icon-wrap" style="background:linear-gradient(135deg,rgba(255,71,87,0.15),rgba(255,107,53,0.1));border-color:rgba(255,71,87,0.25);">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff4757" stroke-width="1.7" stroke-linecap="round">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        </svg>
+      </div>
+      <div class="mod-title">
+        <h1>Corrective Maintenance</h1>
+        <p>Log and track all repair and fault-fixing work orders</p>
+      </div>
+    </div>
+    <div class="mod-actions" style="display:flex;gap:8px;">
+      <button class="btn-secondary" onclick="printFilteredCmReport()" style="gap:6px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print Report
+      </button>
+      <button class="btn-primary" onclick="openAddModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Work Order
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="mod-stats-row" id="cmStats"></div>
+
+  <!-- Filters -->
+  
+  <!-- Quick Date Filter Presets -->
+  <div class="quick-date-pills" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+    <span style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-right:2px;">Filter Date:</span>
+    <button type="button" class="date-pill active" id="btnFilterToday" onclick="setDatePreset('today')">
+      📅 Today's Activities
+    </button>
+    <button type="button" class="date-pill" id="btnFilterAll" onclick="setDatePreset('all')">
+      📋 All Records
+    </button>
+    <button type="button" class="date-pill" id="btnFilter7d" onclick="setDatePreset('7d')">
+      ⏱ Past 7 Days
+    </button>
+    <button type="button" class="date-pill" id="btnFilterMonth" onclick="setDatePreset('month')">
+      🗓 This Month
+    </button>
+    <span id="activeFilterDesc" style="font-size:12px;color:var(--text-secondary);margin-left:auto;font-family:'JetBrains Mono',monospace;"></span>
+  </div>
+
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search by equipment, technician, or problem…" oninput="renderTable()"/>
+    </div>
+    <select class="filter-select" id="filterStatus" onchange="renderTable()">
+      <option value="">All Statuses</option>
+      <option value="open">Open</option>
+      <option value="in-progress">In Progress</option>
+      <option value="closed">Closed</option>
+    </select>
+    <select class="filter-select" id="filterPriority" onchange="renderTable()">
+      <option value="">All Priorities</option>
+      <option value="critical">Critical</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+    <input type="date" class="filter-select" id="filterFrom" onchange="onManualDateChange()" title="From date"/>
+    <input type="date" class="filter-select" id="filterTo" onchange="onManualDateChange()" title="To date"/>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Date</th><th>Equipment / Location</th><th>Problem</th><th>Technician</th><th>Priority</th><th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="cmTableBody"></tbody>
+    </table>
+    <div id="cmEmpty" class="empty-state" style="display:none;">
+      <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff4757" stroke-width="1.5" stroke-linecap="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+      <h3>No work orders found</h3>
+      <p>No corrective maintenance records match your filters. Click "New Work Order" to add one.</p>
+    </div>
+  </div>
+</main>
+
+<!-- Add / Edit Modal -->
+<div class="modal-overlay" id="cmModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2 id="cmModalTitle">New Work Order</h2>
+      <button class="modal-close" onclick="closeModal('cmModal')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cm_id"/>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Date of Fault / Work *</label>
+          <input type="date" id="cm_date"/>
+        </div>
+        <div class="form-field">
+          <label>Priority *</label>
+          <select id="cm_priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Equipment / Device *</label>
+          <input type="text" id="cm_equipment" placeholder="e.g. Transformer T-2, MV Switchgear"/>
+        </div>
+        <div class="form-field">
+          <label>Location</label>
+          <input type="text" id="cm_location" placeholder="e.g. Generator Hall, Control Room"/>
+        </div>
+        <div class="form-field full">
+          <label>Problem Description *</label>
+          <textarea id="cm_problem" placeholder="Describe the fault or problem observed…" rows="3"></textarea>
+        </div>
+        <div class="form-field full">
+          <label>Action Taken / Work Done</label>
+          <textarea id="cm_action" placeholder="Describe what was done to fix the problem…" rows="3"></textarea>
+        </div>
+        <div class="form-field">
+          <label>Technician / Performed By *</label>
+          <select id="cm_tech">
+            <option value="">Select technician</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Work Duration (hours)</label>
+          <input type="number" id="cm_duration" placeholder="e.g. 3.5" step="0.5" min="0"/>
+        </div>
+        <div class="form-field">
+          <label>Parts Used</label>
+          <input type="text" id="cm_parts" placeholder="List parts replaced or used"/>
+        </div>
+        <div class="form-field">
+          <label>Status *</label>
+          <select id="cm_status">
+            <option value="open">Open</option>
+            <option value="in-progress">In Progress</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label>Technical Photo / Document Attachment</label>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <input type="file" id="cm_file_input" accept="image/*,.pdf,.doc,.docx" style="display:none;" onchange="handleCmFileUpload(event)" />
+            <button type="button" class="btn-secondary" onclick="document.getElementById('cm_file_input').click()" style="padding:8px 14px;font-size:12.5px;gap:6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              Upload Photo / Document
+            </button>
+            <span id="cm_file_status" style="font-size:12px;color:var(--text-muted);">No file attached</span>
+          </div>
+          <div id="cm_preview_wrap" style="margin-top:10px;display:none;align-items:center;gap:10px;">
+            <img id="cm_preview_img" src="" style="width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.2);cursor:pointer;" onclick="viewPreviewAttachment()" />
+            <div id="cm_doc_icon" style="display:none;width:70px;height:70px;border-radius:6px;background:rgba(255,255,255,0.06);align-items:center;justify-content:center;font-size:28px;">📄</div>
+            <button type="button" class="btn-secondary" onclick="clearCmAttachment()" style="padding:4px 8px;font-size:11px;color:#ff3366;">Remove</button>
+          </div>
+        </div>
+        <div class="form-field full">
+          <label>Notes / Remarks</label>
+          <textarea id="cm_notes" placeholder="Any additional notes, recommendations…" rows="2"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('cmModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveRecord()">Save Work Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Detail Modal -->
+<div class="modal-overlay" id="cmViewModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h2>Work Order Detail</h2>
+      <button class="modal-close" onclick="closeModal('cmViewModal')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="cmViewBody"></div>
+    <div class="modal-footer" style="justify-content:space-between;">
+      <button class="btn-secondary" id="cmViewPrintBtn" style="gap:6px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print WO
+      </button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-secondary" onclick="closeModal('cmViewModal')">Close</button>
+        <button class="btn-primary" id="cmViewEditBtn">Edit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script src="../js/print-engine.js"></script>
+<script src="../js/equipment-dossier.js"></script>
+<script src="../js/mobile-fab.js"></script>
+<script>
+let currentPreset = 'today';
+
+document.addEventListener('DOMContentLoaded', () => {
+  const session = DB.Session.require();
+  if (!session) return;
+  renderTopbar('Corrective Maintenance');
+  document.getElementById('cm_date').value = DB.fmt.today();
+  populateTechDropdown();
+  renderStats();
+  
+  // Default to showing today's corrective activities on open
+  setDatePreset('today');
+});
+
+function setDatePreset(preset) {
+  currentPreset = preset;
+  const today = DB.fmt.today();
+  const fFrom = document.getElementById('filterFrom');
+  const fTo   = document.getElementById('filterTo');
+  const desc  = document.getElementById('activeFilterDesc');
+
+  ['Today', 'All', '7d', 'Month'].forEach(p => {
+    const el = document.getElementById('btnFilter' + p);
+    if (el) el.classList.toggle('active', preset.toLowerCase() === p.toLowerCase());
+  });
+
+  if (preset === 'today') {
+    fFrom.value = today;
+    fTo.value = today;
+    if (desc) desc.textContent = 'Showing Today (' + today + ')';
+  } else if (preset === '7d') {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    fFrom.value = d.toISOString().split('T')[0];
+    fTo.value = today;
+    if (desc) desc.textContent = 'Past 7 Days';
+  } else if (preset === 'month') {
+    const d = new Date();
+    const firstDay = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    fFrom.value = firstDay;
+    fTo.value = today;
+    if (desc) desc.textContent = 'This Month';
+  } else {
+    // all
+    fFrom.value = '';
+    fTo.value = '';
+    if (desc) desc.textContent = 'All Dates';
+  }
+
+  renderTable();
+}
+
+function onManualDateChange() {
+  currentPreset = 'custom';
+  ['Today', 'All', '7d', 'Month'].forEach(p => {
+    const el = document.getElementById('btnFilter' + p);
+    if (el) el.classList.remove('active');
+  });
+  const desc = document.getElementById('activeFilterDesc');
+  if (desc) desc.textContent = 'Custom Range';
+  renderTable();
+}
+
+
+function populateTechDropdown() {
+  const sel = document.getElementById('cm_tech');
+  const users = DB.Users.getActive();
+  sel.innerHTML = '<option value="">Select technician</option>' + users.map(u => `<option value="${u.name}">${u.name} — ${u.role}</option>`).join('');
+}
+
+function renderStats() {
+  const s = DB.Corrective.getStats();
+  document.getElementById('cmStats').innerHTML = `
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#00d4ff;">${s.total}</div><div class="stat-mini-lbl">Total Work Orders</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#ff4757;">${s.open}</div><div class="stat-mini-lbl">Open</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#f0a500;">${s.inProgress}</div><div class="stat-mini-lbl">In Progress</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#00e676;">${s.closed}</div><div class="stat-mini-lbl">Closed</div></div>
+  `;
+}
+
+function renderTable() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const fStatus   = document.getElementById('filterStatus').value;
+  const fPriority = document.getElementById('filterPriority').value;
+  const fFrom = document.getElementById('filterFrom').value;
+  const fTo   = document.getElementById('filterTo').value;
+
+  let data = DB.Corrective.getAll().filter(r => {
+    if (fStatus   && r.status   !== fStatus)   return false;
+    if (fPriority && r.priority !== fPriority) return false;
+    if (fFrom && r.date < fFrom) return false;
+    if (fTo   && r.date > fTo)   return false;
+    if (search) {
+      const hay = [r.equipment, r.technician, r.problemDescription, r.location, r.actionTaken].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById('cmTableBody');
+  const empty = document.getElementById('cmEmpty');
+
+  if (!data.length) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    const today = DB.fmt.today();
+    if (fFrom === today && fTo === today) {
+      empty.innerHTML = `
+        <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff4757" stroke-width="1.5" stroke-linecap="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+        <h3>No corrective activities recorded today (${today})</h3>
+        <p>No work orders were logged for today yet. You can see records from other days or create a new work order.</p>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;">
+          <button class="btn-secondary" onclick="setDatePreset('all')">View All Days</button>
+          <button class="btn-primary" onclick="openAddModal()">+ New Work Order</button>
+        </div>
+      `;
+    } else {
+      empty.innerHTML = `
+        <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff4757" stroke-width="1.5" stroke-linecap="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+        <h3>No work orders found</h3>
+        <p>No corrective maintenance records match your filters.</p>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;">
+          <button class="btn-secondary" onclick="setDatePreset('all')">Clear Date Filter</button>
+          <button class="btn-primary" onclick="openAddModal()">+ New Work Order</button>
+        </div>
+      `;
+    }
+    return;
+  }
+  empty.style.display = 'none';
+
+  const prioClass = { low:'priority-low', medium:'priority-medium', high:'priority-high', critical:'priority-critical' };
+
+  tbody.innerHTML = data.map((r, i) => `
+    <tr>
+      <td class="td-muted" style="font-family:'JetBrains Mono',monospace;font-size:12px;">#${String(i+1).padStart(3,'0')}</td>
+      <td class="td-muted">${DB.fmt.date(r.date)}</td>
+      <td>
+        <div class="td-main" style="cursor:pointer;color:var(--cyan);font-weight:700;display:inline-flex;align-items:center;gap:4px;" onclick="EquipmentDossier.open('${esc(r.equipment)}')" title="Click to open full Equipment Dossier">
+          ${esc(r.equipment)}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </div>
+        ${r.location ? `<div class="td-sub">${esc(r.location)}</div>` : ''}
+      </td>
+      <td style="max-width:220px;">
+        <div class="td-main" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">${esc(r.problemDescription)}</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          ${r.partsUsed ? `<span class="td-sub">Parts: ${esc(r.partsUsed)}</span>` : ''}
+          ${r.attachments && r.attachments.length ? `<span style="font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(0,240,255,0.15);color:#00f0ff;">📷 ${r.attachments.length} file</span>` : ''}
+        </div>
+      </td>
+      <td>
+        <div class="td-main">${esc(r.technician)}</div>
+        ${r.duration ? `<div class="td-sub">${r.duration}h</div>` : ''}
+      </td>
+      <td><span class="${prioClass[r.priority] || 'priority-medium'}">● ${(r.priority||'').toUpperCase()}</span></td>
+      <td><span class="badge badge-${r.status}">${r.status}</span></td>
+      <td>
+        <div class="td-actions">
+          <button class="btn-icon" onclick="viewRecord('${r.id}')" title="View Details">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button class="btn-icon" onclick="editRecord('${r.id}')" title="Edit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="btn-icon del" onclick="deleteRecord('${r.id}')" title="Delete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+let currentAttachment = null;
+
+function handleCmFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    currentAttachment = {
+      name: file.name,
+      type: file.type,
+      size: (file.size / 1024).toFixed(1) + ' KB',
+      dataUrl: e.target.result,
+      date: DB.fmt.today()
+    };
+    renderAttachmentPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderAttachmentPreview() {
+  const wrap = document.getElementById('cm_preview_wrap');
+  const img = document.getElementById('cm_preview_img');
+  const docIcon = document.getElementById('cm_doc_icon');
+  const status = document.getElementById('cm_file_status');
+
+  if (!currentAttachment) {
+    if (wrap) wrap.style.display = 'none';
+    if (status) status.textContent = 'No file attached';
+    return;
+  }
+
+  if (status) status.textContent = `${currentAttachment.name} (${currentAttachment.size})`;
+  if (wrap) wrap.style.display = 'flex';
+
+  if (currentAttachment.dataUrl && currentAttachment.dataUrl.startsWith('data:image')) {
+    if (img) { img.src = currentAttachment.dataUrl; img.style.display = 'block'; }
+    if (docIcon) docIcon.style.display = 'none';
+  } else {
+    if (img) img.style.display = 'none';
+    if (docIcon) docIcon.style.display = 'flex';
+  }
+}
+
+function clearCmAttachment() {
+  currentAttachment = null;
+  const input = document.getElementById('cm_file_input');
+  if (input) input.value = '';
+  renderAttachmentPreview();
+}
+
+function viewPreviewAttachment() {
+  if (currentAttachment && currentAttachment.dataUrl) {
+    EquipmentDossier.viewImage(currentAttachment.dataUrl);
+  }
+}
+
+function openAddModal() {
+  document.getElementById('cm_id').value = '';
+  document.getElementById('cmModalTitle').textContent = 'New Work Order';
+  document.getElementById('cm_date').value = DB.fmt.today();
+  document.getElementById('cm_equipment').value = '';
+  document.getElementById('cm_location').value = '';
+  document.getElementById('cm_problem').value = '';
+  document.getElementById('cm_action').value = '';
+  document.getElementById('cm_parts').value = '';
+  document.getElementById('cm_duration').value = '';
+  document.getElementById('cm_notes').value = '';
+  document.getElementById('cm_status').value = 'open';
+  document.getElementById('cm_priority').value = 'medium';
+  clearCmAttachment();
+  populateTechDropdown();
+  openModal('cmModal');
+}
+
+function editRecord(id) {
+  const r = DB.Corrective.getById(id);
+  if (!r) return;
+  document.getElementById('cm_id').value = r.id;
+  document.getElementById('cmModalTitle').textContent = 'Edit Work Order';
+  document.getElementById('cm_date').value = r.date || '';
+  document.getElementById('cm_equipment').value = r.equipment || '';
+  document.getElementById('cm_location').value = r.location || '';
+  document.getElementById('cm_problem').value = r.problemDescription || '';
+  document.getElementById('cm_action').value = r.actionTaken || '';
+  document.getElementById('cm_parts').value = r.partsUsed || '';
+  document.getElementById('cm_duration').value = r.duration || '';
+  document.getElementById('cm_notes').value = r.notes || '';
+  document.getElementById('cm_status').value = r.status || 'open';
+  document.getElementById('cm_priority').value = r.priority || 'medium';
+  
+  if (r.attachments && r.attachments.length) {
+    currentAttachment = r.attachments[0];
+  } else {
+    currentAttachment = null;
+  }
+  renderAttachmentPreview();
+
+  populateTechDropdown();
+  document.getElementById('cm_tech').value = r.technician || '';
+  closeModal('cmViewModal');
+  openModal('cmModal');
+}
+
+function viewRecord(id) {
+  const r = DB.Corrective.getById(id);
+  if (!r) return;
+  const prioColors = { low:'var(--text-secondary)', medium:'#38bdf8', high:'#f0a500', critical:'#ff4757' };
+  
+  const hasAttachments = r.attachments && r.attachments.length;
+  const att = hasAttachments ? r.attachments[0] : null;
+
+  document.getElementById('cmViewBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Date</div><div style="font-weight:600;">${DB.fmt.date(r.date)}</div></div>
+      <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Status</div><span class="badge badge-${r.status}">${r.status}</span></div>
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Equipment</div>
+        <div style="font-weight:700;color:var(--cyan);cursor:pointer;display:inline-flex;align-items:center;gap:4px;" onclick="EquipmentDossier.open('${esc(r.equipment)}')">
+          ${esc(r.equipment)} ↗
+        </div>
+      </div>
+      <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Location</div><div>${esc(r.location)||'—'}</div></div>
+      <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Technician</div><div style="font-weight:600;">${esc(r.technician)}</div></div>
+      <div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Priority</div><span style="color:${prioColors[r.priority]};font-weight:700;">● ${(r.priority||'').toUpperCase()}</span></div>
+      <div style="grid-column:1/-1;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Problem Description</div><div style="background:rgba(0,0,0,0.2);padding:12px;border-radius:8px;font-size:14px;line-height:1.6;">${esc(r.problemDescription)||'—'}</div></div>
+      <div style="grid-column:1/-1;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Action Taken</div><div style="background:rgba(0,0,0,0.2);padding:12px;border-radius:8px;font-size:14px;line-height:1.6;">${esc(r.actionTaken)||'—'}</div></div>
+      ${r.partsUsed ? `<div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Parts Used</div><div>${esc(r.partsUsed)}</div></div>` : ''}
+      ${r.duration  ? `<div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Duration</div><div>${r.duration} hours</div></div>` : ''}
+      
+      ${hasAttachments ? `
+        <div style="grid-column:1/-1;">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Attached Technical Photo / Document</div>
+          <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.03);padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);">
+            ${att.dataUrl && att.dataUrl.startsWith('data:image') ? `
+              <img src="${att.dataUrl}" alt="${esc(att.name)}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.2);cursor:pointer;" onclick="EquipmentDossier.viewImage('${att.dataUrl}')" title="Click to view full photo" />
+            ` : `<div style="font-size:32px;">📄</div>`}
+            <div>
+              <div style="font-weight:700;font-size:13px;">${esc(att.name)}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${esc(att.size || 'Attachment')}</div>
+              ${att.dataUrl ? `<button type="button" class="btn-secondary" style="padding:3px 10px;font-size:11px;margin-top:6px;" onclick="EquipmentDossier.viewImage('${att.dataUrl}')">View Full Document</button>` : ''}
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      ${r.notes ? `<div style="grid-column:1/-1;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Notes</div><div style="color:var(--text-secondary);">${esc(r.notes)}</div></div>` : ''}
+    </div>
+  `;
+  document.getElementById('cmViewEditBtn').onclick = () => editRecord(id);
+  document.getElementById('cmViewPrintBtn').onclick = () => printSingleWorkOrder(r);
+  openModal('cmViewModal');
+}
+
+function saveRecord() {
+  const id       = document.getElementById('cm_id').value;
+  const date     = document.getElementById('cm_date').value;
+  const equip    = document.getElementById('cm_equipment').value.trim();
+  const tech     = document.getElementById('cm_tech').value;
+  const problem  = document.getElementById('cm_problem').value.trim();
+  const status   = document.getElementById('cm_status').value;
+  const priority = document.getElementById('cm_priority').value;
+
+  if (!date || !equip || !tech || !problem) {
+    showToast('Date, equipment, technician, and problem are required', 'error'); return;
+  }
+
+  const existing = id ? DB.Corrective.getById(id) : null;
+  const attachments = currentAttachment ? [currentAttachment] : (existing?.attachments || []);
+
+  const data = {
+    date, equipment: equip,
+    location:           document.getElementById('cm_location').value.trim(),
+    problemDescription: problem,
+    actionTaken:        document.getElementById('cm_action').value.trim(),
+    technician:         tech,
+    partsUsed:          document.getElementById('cm_parts').value.trim(),
+    duration:           document.getElementById('cm_duration').value,
+    notes:              document.getElementById('cm_notes').value.trim(),
+    attachments,
+    status, priority,
+  };
+
+  if (id) { DB.Corrective.update(id, data); showToast('Work order updated', 'success'); }
+  else     { DB.Corrective.add(data);        showToast('Work order added', 'success'); }
+
+  closeModal('cmModal');
+  renderStats();
+  renderTable();
+}
+
+function printSingleWorkOrder(r) {
+  const html = `
+    <div style="border:1pt solid #cbd5e1;background:#f8fafc;padding:12pt;border-radius:6pt;margin-bottom:14pt;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8pt;">
+        <div><strong style="font-size:14pt;">Work Order: ${esc(r.workOrderNumber)}</strong></div>
+        <div><span class="badge ${r.status === 'closed' ? 'badge-green' : 'badge-red'}">${esc(r.status.toUpperCase())}</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10pt;font-size:9pt;">
+        <div><strong>Date:</strong> ${esc(r.date)}</div>
+        <div><strong>Equipment:</strong> ${esc(r.equipment)}</div>
+        <div><strong>Location:</strong> ${esc(r.location || 'Turbine Hall')}</div>
+        <div><strong>Technician:</strong> ${esc(r.technician)}</div>
+        <div><strong>Priority:</strong> ${esc(r.priority.toUpperCase())}</div>
+        <div><strong>Duration:</strong> ${esc(r.duration || '—')} hrs</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:12pt;">
+      <h4 style="font-size:10pt;font-weight:700;margin-bottom:4pt;">Problem / Fault Description:</h4>
+      <div style="background:#ffffff;border:1pt solid #cbd5e1;padding:8pt;border-radius:4pt;">${esc(r.problemDescription)}</div>
+    </div>
+
+    <div style="margin-bottom:12pt;">
+      <h4 style="font-size:10pt;font-weight:700;margin-bottom:4pt;">Action Taken / Resolution:</h4>
+      <div style="background:#ffffff;border:1pt solid #cbd5e1;padding:8pt;border-radius:4pt;">${esc(r.actionTaken || 'Pending resolution')}</div>
+    </div>
+
+    ${r.partsUsed ? `
+      <div style="margin-bottom:12pt;">
+        <h4 style="font-size:10pt;font-weight:700;margin-bottom:4pt;">Spare Parts Consumed:</h4>
+        <div style="background:#ffffff;border:1pt solid #cbd5e1;padding:8pt;border-radius:4pt;">${esc(r.partsUsed)}</div>
+      </div>
+    ` : ''}
+
+    ${r.attachments && r.attachments.length ? `
+      <div style="margin-bottom:12pt;">
+        <h4 style="font-size:10pt;font-weight:700;margin-bottom:4pt;">Attached Document / Photo:</h4>
+        <div style="font-size:8.5pt;color:#475569;">Document: ${esc(r.attachments[0].name)} (${esc(r.attachments[0].size || 'File attached')})</div>
+      </div>
+    ` : ''}
+  `;
+
+  PrintEngine.printDocument(`Work Order Document — ${r.workOrderNumber}`, `${r.equipment} • ${r.date}`, html);
+}
+
+function printFilteredCmReport() {
+  const from = document.getElementById('filterFrom')?.value || '';
+  const to = document.getElementById('filterTo')?.value || '';
+  const tech = document.getElementById('filterTech')?.value || '';
+  const status = document.getElementById('filterStatus')?.value || '';
+  PrintEngine.printCorrective(from, to, tech, status);
+}
+
+function deleteRecord(id) {
+  if (!confirm('Delete this work order permanently?')) return;
+  DB.Corrective.remove(id);
+  renderStats();
+  renderTable();
+  showToast('Record deleted', 'info');
+}
+</script>
+</body>
+</html>
