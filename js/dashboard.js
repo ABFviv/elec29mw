@@ -32,7 +32,9 @@ function requireAuth() {
 }
 
 function logout() {
-  DB.Session.logout();
+  localStorage.removeItem('pcSession');
+  sessionStorage.removeItem('pcSession');
+  window.location.href = 'index.html';
 }
 
 // ---- User info ----
