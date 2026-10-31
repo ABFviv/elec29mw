@@ -495,17 +495,22 @@ const DB = (() => {
   };
 
   // ---- Session helpers ----
+  const getLoginUrl = () => {
+    const p = (typeof window !== 'undefined' ? window.location.pathname : '').replace(/\\/g, '/');
+    return p.includes('/modules/') ? '../index.html' : 'index.html';
+  };
+
   const Session = {
     get: () => JSON.parse(localStorage.getItem('pcSession') || sessionStorage.getItem('pcSession') || 'null'),
     require: () => {
       const s = Session.get();
-      if (!s?.user) { window.location.href = '../index.html'; return null; }
+      if (!s?.user) { window.location.href = getLoginUrl(); return null; }
       return s;
     },
     logout: () => {
       localStorage.removeItem('pcSession');
       sessionStorage.removeItem('pcSession');
-      window.location.href = '../index.html';
+      window.location.href = getLoginUrl();
     },
   };
 
