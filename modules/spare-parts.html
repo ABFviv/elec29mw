@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Spare Parts — 29MW Plant EMS</title>
+  <meta name="description" content="Spare parts inventory and purchasing list for the 29MW Power Plant electrical team."/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../css/module.css"/>
+  <link rel="stylesheet" href="../css/print.css"/>
+</head>
+<body class="dash-body">
+<header class="topbar" id="topbar"></header>
+
+<main class="dash-main">
+  <div class="mod-header">
+    <div class="mod-title-row">
+      <div class="mod-icon-wrap" style="background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(67,56,202,0.1));border-color:rgba(124,58,237,0.25);">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.7" stroke-linecap="round">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5" fill="#a78bfa"/>
+        </svg>
+      </div>
+      <div class="mod-title">
+        <h1>Spare Parts</h1>
+        <p>Electrical parts in storage &amp; parts needed to purchase</p>
+      </div>
+    </div>
+    <div class="mod-actions" id="tabActions"></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="mod-stats-row" id="spStats"></div>
+
+  <!-- Tabs -->
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab-storage" onclick="switchTab('storage')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+        <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+      </svg>
+      In Storage
+    </button>
+    <button class="tab-btn" id="tab-order" onclick="switchTab('order')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+      </svg>
+      To Purchase
+    </button>
+  </div>
+
+  <!-- Storage Tab -->
+  <div class="tab-panel active" id="panel-storage">
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="search-input" id="searchStorage" placeholder="Search by part name, number, or category…" oninput="renderStorageTable()"/>
+      </div>
+      <select class="filter-select" id="filterCat" onchange="renderStorageTable()">
+        <option value="">All Categories</option>
+        <option>Circuit Breaker</option><option>Transformer</option><option>Cable</option>
+        <option>Relay</option><option>Fuse</option><option>Contactor</option>
+        <option>Motor</option><option>Capacitor</option><option>Sensor</option><option>Other</option>
+      </select>
+      <select class="filter-select" id="filterStock" onchange="renderStorageTable()">
+        <option value="">All Stock Levels</option>
+        <option value="low">Low Stock Only</option>
+        <option value="ok">Adequate Stock</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Part Name</th><th>Part Number</th><th>Category</th><th>Qty</th><th>Min Stock</th><th>Location</th><th>Added</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="storageTableBody"></tbody>
+      </table>
+      <div id="storageEmpty" class="empty-state" style="display:none;">
+        <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg></div>
+        <h3>No parts in storage</h3>
+        <p>Add parts to your inventory using the button above.</p>
+        <button class="btn-primary" onclick="openStorageModal()">+ Add First Part</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Tab -->
+  <div class="tab-panel" id="panel-order">
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="search-input" id="searchOrder" placeholder="Search by part name or reason…" oninput="renderOrderTable()"/>
+      </div>
+      <select class="filter-select" id="filterOrderStatus" onchange="renderOrderTable()">
+        <option value="">All Statuses</option>
+        <option value="pending">Pending</option>
+        <option value="ordered">Ordered</option>
+        <option value="received">Received</option>
+      </select>
+      <select class="filter-select" id="filterOrderPriority" onchange="renderOrderTable()">
+        <option value="">All Priorities</option>
+        <option value="critical">Critical</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Part Name</th><th>Qty Needed</th><th>Reason</th><th>Priority</th><th>Requested By</th><th>Date</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="orderTableBody"></tbody>
+      </table>
+      <div id="orderEmpty" class="empty-state" style="display:none;">
+        <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div>
+        <h3>No purchase requests</h3>
+        <p>No parts are currently on the purchase list. Click "Request Purchase" to add one.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Storage Modal -->
+<div class="modal-overlay" id="storageModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="storageModalTitle">Add Part to Storage</h2>
+      <button class="modal-close" onclick="closeModal('storageModal')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="sp_id"/>
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Part Name *</label>
+          <input type="text" id="sp_name" placeholder="e.g. Circuit Breaker 33kV, 630A"/>
+        </div>
+        <div class="form-field">
+          <label>Part Number / Code</label>
+          <input type="text" id="sp_number" placeholder="e.g. CB-33-630"/>
+        </div>
+        <div class="form-field">
+          <label>Category *</label>
+          <select id="sp_cat">
+            <option value="">Select category</option>
+            <option>Circuit Breaker</option><option>Transformer</option><option>Cable</option>
+            <option>Relay</option><option>Fuse</option><option>Contactor</option>
+            <option>Motor</option><option>Capacitor</option><option>Sensor</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Quantity in Stock *</label>
+          <input type="number" id="sp_qty" placeholder="0" min="0"/>
+        </div>
+        <div class="form-field">
+          <label>Minimum Stock Level</label>
+          <input type="number" id="sp_min" placeholder="Alert when below this" min="0"/>
+        </div>
+        <div class="form-field">
+          <label>Unit</label>
+          <select id="sp_unit">
+            <option>pcs</option><option>meters</option><option>sets</option><option>liters</option><option>kg</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Storage Location</label>
+          <input type="text" id="sp_loc" placeholder="e.g. Shelf A-3, Cabinet 2"/>
+        </div>
+        <div class="form-field full">
+          <label>Notes</label>
+          <input type="text" id="sp_notes" placeholder="Supplier, specifications, remarks…"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('storageModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveStoragePart()">Save Part</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Modal -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="orderModalTitle">Request Purchase</h2>
+      <button class="modal-close" onclick="closeModal('orderModal')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ord_id"/>
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Part Name *</label>
+          <input type="text" id="ord_name" placeholder="e.g. MV Fuse 11kV 200A"/>
+        </div>
+        <div class="form-field">
+          <label>Part Number / Spec</label>
+          <input type="text" id="ord_number" placeholder="Manufacturer part number"/>
+        </div>
+        <div class="form-field">
+          <label>Quantity Needed *</label>
+          <input type="number" id="ord_qty" placeholder="0" min="1"/>
+        </div>
+        <div class="form-field">
+          <label>Priority</label>
+          <select id="ord_priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical — Urgent</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label>Reason for Purchase *</label>
+          <textarea id="ord_reason" placeholder="Why is this part needed? What equipment does it support?" rows="3"></textarea>
+        </div>
+        <div class="form-field">
+          <label>Requested By *</label>
+          <select id="ord_by">
+            <option value="">Select person</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Status</label>
+          <select id="ord_status">
+            <option value="pending">Pending Approval</option>
+            <option value="ordered">Ordered</option>
+            <option value="received">Received</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label>Notes</label>
+          <input type="text" id="ord_notes" placeholder="Supplier suggestion, urgency, alternatives…"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('orderModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveOrderPart()">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase Cloud Database SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script src="../js/print-engine.js"></script>
+<script src="../js/equipment-dossier.js"></script>
+<script src="../js/mobile-fab.js"></script>
+<script>
+let activeTab = 'storage';
+
+document.addEventListener('DOMContentLoaded', () => {
+  const session = DB.Session.require();
+  if (!session) return;
+  renderTopbar('Spare Parts');
+  renderStats(); renderStorageTable(); renderOrderTable();
+  updateTabActions();
+});
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('panel-storage').classList.toggle('active', tab === 'storage');
+  document.getElementById('panel-order').classList.toggle('active', tab === 'order');
+  document.getElementById('tab-storage').classList.toggle('active', tab === 'storage');
+  document.getElementById('tab-order').classList.toggle('active', tab === 'order');
+  updateTabActions();
+}
+
+function updateTabActions() {
+  const printBtn = `<button class="btn-secondary" onclick="PrintEngine.printSpareParts(${activeTab === 'order'})" title="Print official spare parts report">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    Print Report
+  </button>`;
+  document.getElementById('tabActions').innerHTML = printBtn + (activeTab === 'storage'
+    ? `<button class="btn-primary" onclick="openStorageModal()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Part to Storage</button>`
+    : `<button class="btn-primary" onclick="openOrderModal()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Request Purchase</button>`);
+}
+
+function renderStats() {
+  const s = DB.SpareParts.getStats();
+  const orders = DB.PartsToOrder.getAll();
+  const pending = orders.filter(o => o.status === 'pending').length;
+  document.getElementById('spStats').innerHTML = `
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#a78bfa;">${s.total}</div><div class="stat-mini-lbl">Part Types in Stock</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#00d4ff;">${s.totalItems}</div><div class="stat-mini-lbl">Total Units Stored</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:${s.lowStock>0?'#ff4757':'#00e676'};">${s.lowStock}</div><div class="stat-mini-lbl">Low Stock Alerts</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#f0a500;">${pending}</div><div class="stat-mini-lbl">Pending Purchases</div></div>
+  `;
+}
+
+function renderStorageTable() {
+  const search = document.getElementById('searchStorage').value.toLowerCase();
+  const fCat   = document.getElementById('filterCat').value;
+  const fStock = document.getElementById('filterStock').value;
+
+  let data = DB.SpareParts.getAll().filter(p => {
+    if (fCat && p.category !== fCat) return false;
+    if (fStock === 'low' && p.quantity > p.minStock) return false;
+    if (fStock === 'ok'  && p.quantity <= p.minStock) return false;
+    if (search) {
+      const hay = [p.partName, p.partNumber, p.category, p.location].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById('storageTableBody');
+  const empty = document.getElementById('storageEmpty');
+  if (!data.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = data.map(p => {
+    const isLow = Number(p.quantity) <= Number(p.minStock);
+    return `
+      <tr>
+        <td>
+          <div class="td-main">${esc(p.partName)}</div>
+          ${p.notes ? `<div class="td-sub">${esc(p.notes)}</div>` : ''}
+        </td>
+        <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-secondary);">${esc(p.partNumber)||'—'}</span></td>
+        <td><span class="badge badge-planned">${esc(p.category)}</span></td>
+        <td>
+          <span style="font-size:18px;font-weight:800;color:${isLow?'#ff4757':'#00e676'};">${p.quantity}</span>
+          <span style="font-size:12px;color:var(--text-muted);"> ${esc(p.unit||'pcs')}</span>
+          ${isLow ? '<div class="low-stock-warn">⚠ Low Stock</div>' : ''}
+        </td>
+        <td class="td-muted">${p.minStock || '—'}</td>
+        <td class="td-muted">${esc(p.location)||'—'}</td>
+        <td class="td-muted">${DB.fmt.dateShort(p.addedAt)}</td>
+        <td>
+          <div class="td-actions">
+            <button class="btn-icon" onclick="editStoragePart('${p.id}')" title="Edit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn-icon del" onclick="deleteStoragePart('${p.id}')" title="Remove">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderOrderTable() {
+  const search   = document.getElementById('searchOrder').value.toLowerCase();
+  const fStatus  = document.getElementById('filterOrderStatus').value;
+  const fPriority = document.getElementById('filterOrderPriority').value;
+
+  let data = DB.PartsToOrder.getAll().filter(o => {
+    if (fStatus   && o.status   !== fStatus)   return false;
+    if (fPriority && o.priority !== fPriority) return false;
+    if (search) {
+      const hay = [o.partName, o.reason, o.requestedBy].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById('orderTableBody');
+  const empty = document.getElementById('orderEmpty');
+  if (!data.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  const prioClass = { low:'priority-low', medium:'priority-medium', high:'priority-high', critical:'priority-critical' };
+
+  tbody.innerHTML = data.map(o => `
+    <tr>
+      <td>
+        <div class="td-main">${esc(o.partName)}</div>
+        ${o.partNumber ? `<div class="td-sub">${esc(o.partNumber)}</div>` : ''}
+      </td>
+      <td style="font-size:16px;font-weight:800;color:#a78bfa;">${o.quantityNeeded}</td>
+      <td style="max-width:200px;"><div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">${esc(o.reason)}</div></td>
+      <td><span class="${prioClass[o.priority]||'priority-medium'}">● ${(o.priority||'').toUpperCase()}</span></td>
+      <td class="td-muted">${esc(o.requestedBy)}</td>
+      <td class="td-muted">${DB.fmt.dateShort(o.requestedAt)}</td>
+      <td>
+        <select onchange="updateOrderStatus('${o.id}', this.value)" style="padding:4px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:'Outfit',sans-serif;font-size:12px;outline:none;cursor:pointer;">
+          <option value="pending"  ${o.status==='pending'  ?'selected':''}>Pending</option>
+          <option value="ordered"  ${o.status==='ordered'  ?'selected':''}>Ordered</option>
+          <option value="received" ${o.status==='received' ?'selected':''}>Received</option>
+        </select>
+      </td>
+      <td>
+        <div class="td-actions">
+          <button class="btn-icon" onclick="editOrderPart('${o.id}')" title="Edit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="btn-icon del" onclick="deleteOrderPart('${o.id}')" title="Delete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function updateOrderStatus(id, status) {
+  DB.PartsToOrder.update(id, { status });
+  renderStats();
+  showToast('Status updated to: ' + status, 'success');
+}
+
+// ---- Storage CRUD ----
+function openStorageModal() {
+  document.getElementById('sp_id').value = '';
+  document.getElementById('storageModalTitle').textContent = 'Add Part to Storage';
+  ['sp_name','sp_number','sp_qty','sp_min','sp_loc','sp_notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('sp_cat').value  = '';
+  document.getElementById('sp_unit').value = 'pcs';
+  openModal('storageModal');
+}
+
+function editStoragePart(id) {
+  const p = DB.SpareParts.getById(id);
+  if (!p) return;
+  document.getElementById('sp_id').value     = p.id;
+  document.getElementById('storageModalTitle').textContent = 'Edit Part';
+  document.getElementById('sp_name').value   = p.partName   || '';
+  document.getElementById('sp_number').value = p.partNumber || '';
+  document.getElementById('sp_cat').value    = p.category   || '';
+  document.getElementById('sp_qty').value    = p.quantity   || '';
+  document.getElementById('sp_min').value    = p.minStock   || '';
+  document.getElementById('sp_unit').value   = p.unit       || 'pcs';
+  document.getElementById('sp_loc').value    = p.location   || '';
+  document.getElementById('sp_notes').value  = p.notes      || '';
+  openModal('storageModal');
+}
+
+function saveStoragePart() {
+  const id   = document.getElementById('sp_id').value;
+  const name = document.getElementById('sp_name').value.trim();
+  const cat  = document.getElementById('sp_cat').value;
+  const qty  = document.getElementById('sp_qty').value;
+  if (!name || !cat || qty === '') { showToast('Name, category, and quantity are required', 'error'); return; }
+  const data = {
+    partName: name, partNumber: document.getElementById('sp_number').value.trim(),
+    category: cat, quantity: Number(qty),
+    minStock: Number(document.getElementById('sp_min').value) || 0,
+    unit: document.getElementById('sp_unit').value,
+    location: document.getElementById('sp_loc').value.trim(),
+    notes: document.getElementById('sp_notes').value.trim(),
+  };
+  if (id) { DB.SpareParts.update(id, data); showToast('Part updated', 'success'); }
+  else     { DB.SpareParts.add(data);        showToast('Part added to storage', 'success'); }
+  closeModal('storageModal'); renderStats(); renderStorageTable();
+}
+
+function deleteStoragePart(id) {
+  if (!confirm('Remove this part from storage inventory?')) return;
+  DB.SpareParts.remove(id); renderStats(); renderStorageTable();
+  showToast('Part removed', 'info');
+}
+
+// ---- Order CRUD ----
+function openOrderModal() {
+  document.getElementById('ord_id').value = '';
+  document.getElementById('orderModalTitle').textContent = 'Request Purchase';
+  ['ord_name','ord_number','ord_qty','ord_reason','ord_notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ord_priority').value = 'medium';
+  document.getElementById('ord_status').value   = 'pending';
+  document.getElementById('ord_by').innerHTML   = '<option value="">Select person</option>' + DB.Users.getActive().map(u => `<option value="${u.name}">${u.name}</option>`).join('');
+  openModal('orderModal');
+}
+
+function editOrderPart(id) {
+  const o = DB.PartsToOrder.getAll().find(x => x.id === id);
+  if (!o) return;
+  document.getElementById('ord_id').value     = o.id;
+  document.getElementById('orderModalTitle').textContent = 'Edit Purchase Request';
+  document.getElementById('ord_name').value   = o.partName       || '';
+  document.getElementById('ord_number').value = o.partNumber     || '';
+  document.getElementById('ord_qty').value    = o.quantityNeeded || '';
+  document.getElementById('ord_reason').value = o.reason         || '';
+  document.getElementById('ord_priority').value = o.priority     || 'medium';
+  document.getElementById('ord_status').value = o.status         || 'pending';
+  document.getElementById('ord_notes').value  = o.notes          || '';
+  document.getElementById('ord_by').innerHTML = '<option value="">Select person</option>' + DB.Users.getActive().map(u => `<option value="${u.name}" ${u.name===o.requestedBy?'selected':''}>${u.name}</option>`).join('');
+  openModal('orderModal');
+}
+
+function saveOrderPart() {
+  const id   = document.getElementById('ord_id').value;
+  const name = document.getElementById('ord_name').value.trim();
+  const qty  = document.getElementById('ord_qty').value;
+  const reason = document.getElementById('ord_reason').value.trim();
+  const by   = document.getElementById('ord_by').value;
+  if (!name || !qty || !reason || !by) { showToast('Name, quantity, reason, and requester are required', 'error'); return; }
+  const data = {
+    partName: name, partNumber: document.getElementById('ord_number').value.trim(),
+    quantityNeeded: Number(qty), reason,
+    priority: document.getElementById('ord_priority').value,
+    requestedBy: by, status: document.getElementById('ord_status').value,
+    notes: document.getElementById('ord_notes').value.trim(),
+  };
+  if (id) { DB.PartsToOrder.update(id, data); showToast('Request updated', 'success'); }
+  else     { DB.PartsToOrder.add(data);        showToast('Purchase request submitted', 'success'); }
+  closeModal('orderModal'); renderStats(); renderOrderTable();
+}
+
+function deleteOrderPart(id) {
+  if (!confirm('Delete this purchase request?')) return;
+  DB.PartsToOrder.remove(id); renderStats(); renderOrderTable();
+  showToast('Request deleted', 'info');
+}
+</script>
+</body>
+</html>
