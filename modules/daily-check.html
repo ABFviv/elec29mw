@@ -1189,8 +1189,11 @@
     // ================================================================
     //  Load / Prompt
     // ================================================================
-    function loadOrPrompt() {
+    async function loadOrPrompt() {
       currentSchedule = DB.MonthlySchedule.load(viewYear, viewMonth);
+      if (!currentSchedule && DB.MonthlySchedule.loadAsync) {
+        currentSchedule = await DB.MonthlySchedule.loadAsync(viewYear, viewMonth);
+      }
       renderStatsRow();
       renderToday();
       renderCalendar();
@@ -1286,6 +1289,16 @@
       }
 
       if (!sched) {
+        if (DB.MonthlySchedule.loadAsync) {
+          DB.MonthlySchedule.loadAsync(targetYear, targetMonth).then(s => {
+            if (s) {
+              if (targetYear === viewYear && targetMonth === viewMonth) currentSchedule = s;
+              renderToday(targetDateStr);
+              renderCalendar();
+              renderStatsRow();
+            }
+          });
+        }
         el.innerHTML = buildNoScheduleCard(targetYear, targetMonth);
         return;
       }
@@ -1818,7 +1831,7 @@
     }
 
     function renderCalendar() {
-      const sched = DB.MonthlySchedule.load(calViewYear, calViewMonth);
+      let sched = DB.MonthlySchedule.load(calViewYear, calViewMonth);
       const todayStr = new Date().toISOString().split('T')[0];
 
       document.getElementById('calMonthTitle').textContent =
@@ -1829,6 +1842,14 @@
       let html = days.map(d => `<div class="cal-header">${d}</div>`).join('');
 
       if (!sched) {
+        if (DB.MonthlySchedule.loadAsync) {
+          DB.MonthlySchedule.loadAsync(calViewYear, calViewMonth).then(s => {
+            if (s) {
+              renderCalendar();
+              renderStatsRow();
+            }
+          });
+        }
         grid.innerHTML = html + `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">
       No schedule generated for ${MONTH_NAMES[calViewMonth - 1]} ${calViewYear}.
       <br/>Use <strong>Schedule Settings</strong> to generate one.
@@ -1873,9 +1894,15 @@
     }
 
     function showDayDetail(dateStr) {
-  const [y, m] = dateStr.split('-').map(Number);
-  const sched = DB.MonthlySchedule.load(y, m);
-  if (!sched) return;
+      const [y, m] = dateStr.split('-').map(Number);
+      let sched = DB.MonthlySchedule.load(y, m);
+      if (!sched && DB.MonthlySchedule.loadAsync) {
+        DB.MonthlySchedule.loadAsync(y, m).then(s => {
+          if (s) showDayDetail(dateStr);
+        });
+        return;
+      }
+      if (!sched) return;
   const day = sched.days.find(d => d.date === dateStr);
   if (!day) return;
 
