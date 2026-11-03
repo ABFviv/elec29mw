@@ -51,6 +51,7 @@ const FirebaseDB = (() => {
         }
 
         updateUIStatus(true);
+        setupRealtimeListeners();
       } else {
         console.warn('Firebase SDK script not ready yet.');
         updateUIStatus(false);
@@ -59,6 +60,50 @@ const FirebaseDB = (() => {
       console.error('Firebase initialization error:', err);
       updateUIStatus(false);
     }
+  };
+
+  const setupRealtimeListeners = () => {
+    if (!db) return;
+
+    // 1. Instant snapshot listener on monthlySchedules (so all shifts update live across devices)
+    try {
+      db.collection('monthlySchedules').onSnapshot(snap => {
+        if (!snap) return;
+        let updated = false;
+        snap.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data && data.year && data.month) {
+            const key = `pc_sched_${data.year}_${String(data.month).padStart(2, '0')}`;
+            localStorage.setItem(key, JSON.stringify(data));
+            updated = true;
+          }
+        });
+        if (updated && typeof window !== 'undefined') {
+          console.log('⚡ [Firebase] Real-time monthly schedule synced to device');
+          window.dispatchEvent(new CustomEvent('cloudDataUpdated', {
+            detail: { collection: 'monthlySchedules', timestamp: Date.now() }
+          }));
+        }
+      }, err => {
+        console.warn('[Firebase] monthlySchedules snapshot warning:', err);
+      });
+    } catch (e) {}
+
+    // 2. Real-time listener on system sync beacon for general updates
+    try {
+      db.collection('_system').doc('sync').onSnapshot(snap => {
+        if (!snap || !snap.exists) return;
+        const meta = snap.data();
+        const lastUpdatedStr = meta?.lastUpdated;
+        const localUpdatedStr = localStorage.getItem('pc_last_cloud_updated');
+        if (lastUpdatedStr && lastUpdatedStr !== localUpdatedStr) {
+          console.log('⚡ [Firebase] Real-time sync beacon fired! Detected change in:', meta?.collection);
+          pullCloudData(true);
+        }
+      }, err => {
+        console.warn('[Firebase] Sync beacon snapshot warning:', err);
+      });
+    } catch (e) {}
   };
 
   const updateUIStatus = (online) => {
@@ -221,14 +266,19 @@ const FirebaseDB = (() => {
     const nowMs = Date.now();
     const lastPullMs = Number(localStorage.getItem('pc_last_cloud_pull') || 0);
 
-    // Fast check: if pulled within 2 seconds without force, skip
-    if (!force && (nowMs - lastPullMs < 2000)) {
+    // Fast check: if pulled within 1.5 seconds without force, skip
+    if (!force && (nowMs - lastPullMs < 1500)) {
       return;
     }
 
     try {
       let needsPull = true;
       let targetColl = null;
+
+      // Check current month schedule existence locally
+      const curY = new Date().getFullYear();
+      const curM = String(new Date().getMonth() + 1).padStart(2, '0');
+      const missingCurrentSched = !localStorage.getItem(`pc_sched_${curY}_${curM}`);
 
       // 1 single document read to check if ANY cloud data actually changed
       try {
@@ -238,7 +288,7 @@ const FirebaseDB = (() => {
           const lastUpdatedStr = meta?.lastUpdated;
           const localUpdatedStr = localStorage.getItem('pc_last_cloud_updated');
 
-          if (lastUpdatedStr && localUpdatedStr && lastUpdatedStr <= localUpdatedStr && !force) {
+          if (lastUpdatedStr && localUpdatedStr && lastUpdatedStr <= localUpdatedStr && !missingCurrentSched && !force) {
             needsPull = false;
             console.log('⚡ [Firebase] Cloud data is identical to local cache. 0 collection reads.');
           } else {
@@ -263,11 +313,7 @@ const FirebaseDB = (() => {
         { coll: 'engineFans', key: 'pc_engine_fans' },
       ];
 
-      const toPull = targetColl
-        ? collections.filter(c => c.coll === targetColl)
-        : collections;
-
-      for (const item of (toPull.length ? toPull : collections)) {
+      for (const item of collections) {
         const docs = await getAllDocs(item.coll);
         if (docs && docs.length > 0) {
           if (item.coll === 'engineFans') {
@@ -283,31 +329,30 @@ const FirebaseDB = (() => {
         }
       }
 
-      // ONLY pull current month schedule if needed — NEVER entire multi-year database
-      if (!targetColl || targetColl === 'monthlySchedules') {
-        const curY = new Date().getFullYear();
-        const curM = String(new Date().getMonth() + 1).padStart(2, '0');
-        const schedDoc = await getDoc('monthlySchedules', `${curY}_${curM}`);
-        if (schedDoc) {
-          localStorage.setItem(`pc_sched_${curY}_${curM}`, JSON.stringify(schedDoc));
-        }
+      // Always pull all monthly schedules into local storage
+      const schedDocs = await getAllDocs('monthlySchedules');
+      if (schedDocs && schedDocs.length > 0) {
+        schedDocs.forEach(sched => {
+          if (sched && sched.year && sched.month) {
+            const key = `pc_sched_${sched.year}_${String(sched.month).padStart(2, '0')}`;
+            localStorage.setItem(key, JSON.stringify(sched));
+          }
+        });
       }
 
       // ONLY pull today's record if needed — NEVER all historical daily checks
-      if (!targetColl || targetColl === 'dailyRecords') {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const todayDoc = await getDoc('dailyRecords', todayStr);
-        if (todayDoc) {
-          const existing = JSON.parse(localStorage.getItem('pc_daily_records') || '{}');
-          existing[todayStr] = todayDoc;
-          localStorage.setItem('pc_daily_records', JSON.stringify(existing));
-        }
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayDoc = await getDoc('dailyRecords', todayStr);
+      if (todayDoc) {
+        const existing = JSON.parse(localStorage.getItem('pc_daily_records') || '{}');
+        existing[todayStr] = todayDoc;
+        localStorage.setItem('pc_daily_records', JSON.stringify(existing));
       }
 
       // Broadcast live cloud update event so active views re-render immediately
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('cloudDataUpdated', {
-          detail: { collection: targetColl, timestamp: nowMs }
+          detail: { collection: targetColl || 'all', timestamp: nowMs }
         }));
       }
     } catch (err) {
