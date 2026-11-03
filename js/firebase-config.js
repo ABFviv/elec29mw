@@ -243,12 +243,20 @@ const FirebaseDB = (() => {
             await db.collection('dailyTemplate').doc(String(t.id)).set(t);
           }
         }
-        // Push initial engine filters
-        const filtersRaw = localStorage.getItem('pc_engine_filters');
-        if (filtersRaw) {
-          const filters = JSON.parse(filtersRaw);
-          for (const f of filters) {
-            await db.collection('engineFilters').doc(String(f.id)).set(f);
+        // Push initial training records
+        const trRaw = localStorage.getItem('pc_training');
+        if (trRaw) {
+          const trs = JSON.parse(trRaw);
+          for (const t of trs) {
+            if (t && t.id) await db.collection('trainingRecords').doc(String(t.id)).set(t);
+          }
+        }
+        // Push initial engine fans
+        const fansRaw = localStorage.getItem('pc_engine_fans');
+        if (fansRaw) {
+          const fans = JSON.parse(fansRaw);
+          for (const f of fans) {
+            if (f && f.id) await db.collection('engineFans').doc(String(f.id)).set(f);
           }
         }
         // Push initial spare parts
@@ -347,7 +355,17 @@ const FirebaseDB = (() => {
 
       for (const item of collections) {
         const docs = await getAllDocs(item.coll);
-        if (docs && docs.length > 0) {
+        if (item.coll === 'engineFilters') {
+          // Permanently purge legacy seed records (ef-1 .. ef-4) from cloud and local
+          const valid = (docs || []).filter(f => {
+            if (['ef-1', 'ef-2', 'ef-3', 'ef-4'].includes(f.id)) {
+              deleteDoc('engineFilters', f.id);
+              return false;
+            }
+            return true;
+          });
+          localStorage.setItem(item.key, JSON.stringify(valid));
+        } else if (docs && docs.length > 0) {
           if (item.coll === 'engineFans') {
             // Merge cloud fans into existing local cache so we never lose fans
             const existing = JSON.parse(localStorage.getItem(item.key) || '[]');
