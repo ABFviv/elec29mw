@@ -588,6 +588,23 @@ const DB = (() => {
       try { const r = localStorage.getItem(MonthlySchedule._key(year, month)); return r ? JSON.parse(r) : null; }
       catch { return null; }
     },
+    loadAsync: async (year, month) => {
+      const local = MonthlySchedule.load(year, month);
+      if (local && local.days && local.days.length) return local;
+      if (typeof window !== 'undefined' && window.FirebaseDB?.getDoc) {
+        const id = `${year}_${String(month).padStart(2, '0')}`;
+        try {
+          const cloud = await window.FirebaseDB.getDoc('monthlySchedules', id);
+          if (cloud && cloud.days && cloud.days.length) {
+            localStorage.setItem(MonthlySchedule._key(year, month), JSON.stringify(cloud));
+            return cloud;
+          }
+        } catch (e) {
+          console.warn('[Firebase] loadAsync monthlySchedule error:', e);
+        }
+      }
+      return null;
+    },
     exists: (year, month) => !!localStorage.getItem(MonthlySchedule._key(year, month)),
     getForDate: (dateStr) => {
       const [y, m] = dateStr.split('-').map(Number);
