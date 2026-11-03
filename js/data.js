@@ -133,42 +133,12 @@ const DB = (() => {
       ]);
     }
 
-    // Seed Engine Filter tracker (4 engines — 1 month service interval)
-    if (!load(KEYS.engineFilters).length) {
-      save(KEYS.engineFilters, [
-        {
-          id: 'ef-1',
-          engine: '1',
-          date: '2026-10-18',
-          nextDueDate: '2026-11-18',
-          engineer: 'Namo Hoshyar',
-          notes: 'Full engine filter set replaced. Housing cleaned and seals inspected.'
-        },
-        {
-          id: 'ef-2',
-          engine: '2',
-          date: '2026-10-05',
-          nextDueDate: '2026-11-05',
-          engineer: 'Mohammed Baqi',
-          notes: 'Engine filter renewed. DP gauge reset and differential pressure normal.'
-        },
-        {
-          id: 'ef-3',
-          engine: '3',
-          date: '2026-10-22',
-          nextDueDate: '2026-11-22',
-          engineer: 'Mohammed Shwan',
-          notes: 'Engine filter changed during scheduled shutdown. Oil level verified.'
-        },
-        {
-          id: 'ef-4',
-          engine: '4',
-          date: '2026-09-20',
-          nextDueDate: '2026-10-20',
-          engineer: 'Zamwa Pshtiwan',
-          notes: 'Engine filter replaced. Element inspected for metal particles.'
-        }
-      ]);
+    // Clean up any legacy default filter logs (ef-1 .. ef-4) so users start with clean logs
+    const currentFilters = load(KEYS.engineFilters, []);
+    const cleanedFilters = currentFilters.filter(f => !['ef-1', 'ef-2', 'ef-3', 'ef-4'].includes(f.id));
+    if (cleanedFilters.length !== currentFilters.length) {
+      save(KEYS.engineFilters, cleanedFilters);
+      ['ef-1', 'ef-2', 'ef-3', 'ef-4'].forEach(id => fbDelete('engineFilters', id));
     }
 
     // Seed Engine Radiator/Cooling Fans (4 engines × 15 fans = 60 fans)
@@ -398,7 +368,7 @@ const DB = (() => {
   // ============ ENGINE FILTERS TRACKER (ENGINES 1–4) ============
   const EngineFilters = {
     getAll: () => {
-      const records = load(KEYS.engineFilters);
+      const records = load(KEYS.engineFilters).filter(r => !['ef-1', 'ef-2', 'ef-3', 'ef-4'].includes(r.id));
       // Self-healing: clean up any rapid duplicate spam clicks (same engine, date, engineer, notes)
       const seen = new Set();
       const deduped = [];
@@ -413,7 +383,7 @@ const DB = (() => {
           if (r.id) fbDelete('engineFilters', r.id);
         }
       }
-      if (hasDups) {
+      if (hasDups || deduped.length !== load(KEYS.engineFilters).length) {
         save(KEYS.engineFilters, deduped);
       }
       return deduped.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
