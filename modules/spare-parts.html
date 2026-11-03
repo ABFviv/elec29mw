@@ -104,6 +104,10 @@
         <option value="medium">Medium</option>
         <option value="low">Low</option>
       </select>
+      <button class="btn-secondary" onclick="printPurchaseList()" style="white-space:nowrap;display:inline-flex;align-items:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print Purchase List
+      </button>
     </div>
     <div class="table-wrap">
       <table class="data-table">
@@ -625,6 +629,70 @@ function saveOrderPart() {
   } finally {
     setTimeout(() => { if (saveBtn) saveBtn.disabled = false; }, 600);
   }
+}
+
+function printPurchaseList() {
+  const search = document.getElementById('searchOrder').value.toLowerCase();
+  const fStatus = document.getElementById('filterOrderStatus').value;
+  const fPriority = document.getElementById('filterOrderPriority').value;
+  const prioClass = { low: 'priority-low', medium: 'priority-medium', high: 'priority-high', critical: 'priority-critical' };
+
+  let data = DB.PartsToOrder.getAll().filter(o => {
+    if (fStatus && o.status !== fStatus) return false;
+    if (fPriority && o.priority !== fPriority) return false;
+    if (search) {
+      const hay = [o.partName, o.reason, o.requestedBy].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const statusBadge = (s) => {
+    const colors = { pending: '#f0a500', ordered: '#00d4ff', received: '#00e676' };
+    return `<span style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;color:${colors[s]||'#fff'}">${(s||'').toUpperCase()}</span>`;
+  };
+
+  const html = `
+    <div class="kpi-row">
+      <div class="kpi-box"><div class="kpi-box-val">${data.length}</div><div class="kpi-box-lbl">Total Items</div></div>
+      <div class="kpi-box"><div class="kpi-box-val">${data.filter(o=>o.status==='pending').length}</div><div class="kpi-box-lbl">Pending</div></div>
+      <div class="kpi-box"><div class="kpi-box-val">${data.filter(o=>o.status==='ordered').length}</div><div class="kpi-box-lbl">Ordered</div></div>
+      <div class="kpi-box"><div class="kpi-box-val">${data.filter(o=>o.status==='received').length}</div><div class="kpi-box-lbl">Received</div></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Part Name</th>
+          <th>Part No.</th>
+          <th>Qty Needed</th>
+          <th>Reason</th>
+          <th>Priority</th>
+          <th>Requested By</th>
+          <th>Date Requested</th>
+          <th>Status</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map((o, i) => `
+          <tr>
+            <td>${String(i+1).padStart(3,'0')}</td>
+            <td><strong>${esc(o.partName)}</strong></td>
+            <td style="font-family:monospace;font-size:12px;">${esc(o.partNumber||'—')}</td>
+            <td><strong>${o.quantityNeeded || '—'}</strong></td>
+            <td>${esc(o.reason||'—')}</td>
+            <td><strong>${(o.priority||'').toUpperCase()}</strong></td>
+            <td>${esc(o.requestedBy||'—')}</td>
+            <td>${DB.fmt.dateShort(o.requestedAt)}</td>
+            <td>${statusBadge(o.status)}</td>
+            <td>${esc(o.notes||'—')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  PrintEngine.printDocument('Spare Parts Purchase Request List', '29MW Power Plant — Parts to Order', html);
 }
 
 function deleteOrderPart(id) {
