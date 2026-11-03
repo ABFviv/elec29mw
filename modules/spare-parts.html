@@ -228,7 +228,7 @@
             <option value="">Select person</option>
           </select>
         </div>
-        <div class="form-field">
+        <div class="form-field" id="ord_status_group">
           <label>Status</label>
           <select id="ord_status">
             <option value="pending">Pending Approval</option>
@@ -309,12 +309,11 @@ function updateTabActions() {
 function renderStats() {
   const s = DB.SpareParts.getStats();
   const orders = DB.PartsToOrder.getAll();
-  const pending = orders.filter(o => o.status === 'pending').length;
   document.getElementById('spStats').innerHTML = `
     <div class="stat-mini"><div class="stat-mini-val" style="color:#a78bfa;">${s.total}</div><div class="stat-mini-lbl">Part Types in Stock</div></div>
     <div class="stat-mini"><div class="stat-mini-val" style="color:#00d4ff;">${s.totalItems}</div><div class="stat-mini-lbl">Total Units Stored</div></div>
     <div class="stat-mini"><div class="stat-mini-val" style="color:${s.lowStock>0?'#ff4757':'#00e676'};">${s.lowStock}</div><div class="stat-mini-lbl">Low Stock Alerts</div></div>
-    <div class="stat-mini"><div class="stat-mini-val" style="color:#f0a500;">${pending}</div><div class="stat-mini-lbl">Pending Purchases</div></div>
+    <div class="stat-mini"><div class="stat-mini-val" style="color:#f0a500;">${orders.length}</div><div class="stat-mini-lbl">Total Items to Purchase</div></div>
   `;
 }
 
@@ -550,6 +549,8 @@ function openOrderModal() {
   ['ord_name','ord_number','ord_qty','ord_reason','ord_notes'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('ord_priority').value = 'medium';
   document.getElementById('ord_status').value   = 'pending';
+  const stGroup = document.getElementById('ord_status_group');
+  if (stGroup) stGroup.style.display = 'none';
   const curUser = DB.Session.get()?.user?.name || 'Engineer';
   const ordBy = document.getElementById('ord_by');
   ordBy.innerHTML = `<option value="${curUser}" selected>${curUser} (🔒 Current Engineer)</option>`;
@@ -576,6 +577,8 @@ function editOrderPart(id) {
   document.getElementById('ord_reason').value = o.reason         || '';
   document.getElementById('ord_priority').value = o.priority     || 'medium';
   document.getElementById('ord_status').value = o.status         || 'pending';
+  const stGroup = document.getElementById('ord_status_group');
+  if (stGroup) stGroup.style.display = '';
   document.getElementById('ord_notes').value  = o.notes          || '';
   const curUser = o.requestedBy || DB.Session.get()?.user?.name || 'Engineer';
   const ordBy = document.getElementById('ord_by');
@@ -610,11 +613,15 @@ function saveOrderPart() {
       if (saveBtn) saveBtn.disabled = false;
       return;
     }
+    const statusVal = (document.getElementById('ord_status_group')?.style.display !== 'none' && document.getElementById('ord_status')?.value)
+      ? document.getElementById('ord_status').value
+      : (existing?.status || 'pending');
+
     const data = {
       partName: name, partNumber: document.getElementById('ord_number').value.trim(),
       quantityNeeded: Number(qty), reason,
       priority: document.getElementById('ord_priority').value,
-      requestedBy: by, status: document.getElementById('ord_status').value,
+      requestedBy: by, status: statusVal,
       notes: document.getElementById('ord_notes').value.trim(),
     };
     if (id) { DB.PartsToOrder.update(id, data); showToast('Request updated', 'success'); }
@@ -654,10 +661,7 @@ function printPurchaseList() {
 
   const html = `
     <div class="kpi-row">
-      <div class="kpi-box"><div class="kpi-box-val">${data.length}</div><div class="kpi-box-lbl">Total Items</div></div>
-      <div class="kpi-box"><div class="kpi-box-val">${data.filter(o=>o.status==='pending').length}</div><div class="kpi-box-lbl">Pending</div></div>
-      <div class="kpi-box"><div class="kpi-box-val">${data.filter(o=>o.status==='ordered').length}</div><div class="kpi-box-lbl">Ordered</div></div>
-      <div class="kpi-box"><div class="kpi-box-val">${data.filter(o=>o.status==='received').length}</div><div class="kpi-box-lbl">Received</div></div>
+      <div class="kpi-box"><div class="kpi-box-val">${data.length}</div><div class="kpi-box-lbl">Total Items to Purchase</div></div>
     </div>
     <table>
       <thead>
