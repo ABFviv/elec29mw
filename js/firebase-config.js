@@ -251,6 +251,38 @@ const FirebaseDB = (() => {
             await db.collection('engineFilters').doc(String(f.id)).set(f);
           }
         }
+        // Push initial spare parts
+        const spareRaw = localStorage.getItem('pc_spare_parts');
+        if (spareRaw) {
+          const parts = JSON.parse(spareRaw);
+          for (const p of parts) {
+            if (p && p.id) await db.collection('spareParts').doc(String(p.id)).set(p);
+          }
+        }
+        // Push initial parts to order
+        const ordersRaw = localStorage.getItem('pc_parts_order');
+        if (ordersRaw) {
+          const orders = JSON.parse(ordersRaw);
+          for (const o of orders) {
+            if (o && o.id) await db.collection('partsToOrder').doc(String(o.id)).set(o);
+          }
+        }
+        // Push initial preventive maintenance
+        const pmRaw = localStorage.getItem('pc_preventive');
+        if (pmRaw) {
+          const pms = JSON.parse(pmRaw);
+          for (const pm of pms) {
+            if (pm && pm.id) await db.collection('preventiveMaint').doc(String(pm.id)).set(pm);
+          }
+        }
+        // Push initial corrective maintenance
+        const cmRaw = localStorage.getItem('pc_corrective');
+        if (cmRaw) {
+          const cms = JSON.parse(cmRaw);
+          for (const cm of cms) {
+            if (cm && cm.id) await db.collection('correctiveMaint').doc(String(cm.id)).set(cm);
+          }
+        }
         console.log('✅ Initial database setup complete in Firestore!');
       }
       localStorage.setItem('pc_db_seeded', 'true');
@@ -369,12 +401,11 @@ const FirebaseDB = (() => {
     const collMap = {
       users: 'pc_users',
       dailyTemplate: 'pc_daily_template',
-      correctiveMaint: 'pc_corrective_maint',
-      preventiveMaint: 'pc_preventive_maint',
+      correctiveMaint: 'pc_corrective',
+      preventiveMaint: 'pc_preventive',
       spareParts: 'pc_spare_parts',
-      partsToOrder: 'pc_parts_to_order',
-      monthlySchedule: 'pc_monthly_schedule',
-      trainingRecords: 'pc_training_records',
+      partsToOrder: 'pc_parts_order',
+      trainingRecords: 'pc_training',
       engineFilters: 'pc_engine_filters',
       engineFans: 'pc_engine_fans',
     };
